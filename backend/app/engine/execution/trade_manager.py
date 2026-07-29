@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.domain.enums import PositionSide
-from app.domain.money import round_money
+from app.domain.money import mul_money, round_money
 from app.engine.execution.position import Position
 from app.engine.execution.trade import Trade
 
@@ -36,13 +36,15 @@ class TradeManager:
         quantity = position.quantity
         bars_held = max(exit_bar_index - position.entry_bar_index, 1)
         if position.side is PositionSide.LONG:
-            gross_pnl = round_money((exit_price - position.entry_price) * quantity)
+            gross_pnl = round_money(mul_money(exit_price - position.entry_price, quantity))
         else:
-            gross_pnl = round_money((position.entry_price - exit_price) * quantity)
+            gross_pnl = round_money(mul_money(position.entry_price - exit_price, quantity))
 
         total_commission = round_money(position.entry_commission + exit_commission)
         total_slippage = round_money(position.entry_slippage_cost + exit_slippage_cost)
-        net_pnl = round_money(gross_pnl - total_commission - total_slippage)
+        # Slippage is already embedded in fill prices (gross_pnl). Subtract commission
+        # only so net_pnl reconciles with final_cash - initial_capital.
+        net_pnl = round_money(gross_pnl - total_commission)
 
         trade = Trade(
             seq=self._next_seq,

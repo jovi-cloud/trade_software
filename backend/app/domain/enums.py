@@ -81,3 +81,10 @@ class PositionSide(StrEnum):
 
     LONG = "long"
     SHORT = "short"
+
+
+class BacktestRunStatus(StrEnum):
+    """Terminal state of a persisted backtest run."""
+
+    COMPLETED = "completed"
+    FAILED = "failed"

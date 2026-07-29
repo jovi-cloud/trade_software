@@ -124,9 +124,7 @@ class StrategyLoader:
         try:
             code = compile(source, "<strategy>", "exec")
         except SyntaxError as exc:
-            raise StrategyCompileError(
-                f"Syntax error: {exc.msg}", line=exc.lineno
-            ) from exc
+            raise StrategyCompileError(f"Syntax error: {exc.msg}", line=exc.lineno) from exc
         except ValueError as exc:
             # e.g. source containing null bytes
             raise StrategyCompileError(f"Source could not be compiled: {exc}") from exc

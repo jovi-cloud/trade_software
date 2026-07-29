@@ -95,6 +95,7 @@ class PerformanceMetricsRead(BaseModel):
 class ExecutionResultRead(BaseModel):
     """Outcome of one in-process replay with performance analytics."""
 
+    run_id: str | None = None
     completed: bool
     bars_processed: int = Field(ge=0)
     execution_time_ms: float = Field(ge=0)

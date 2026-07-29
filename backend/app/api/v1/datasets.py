@@ -72,9 +72,7 @@ def get_dataset(dataset_id: str, db: DbSession, paths: Paths) -> DatasetRead:
     return dataset_to_read(service.get(dataset_id))
 
 
-@router.delete(
-    "/{dataset_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a dataset"
-)
+@router.delete("/{dataset_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a dataset")
 def delete_dataset(dataset_id: str, db: DbSession, paths: Paths) -> Response:
     service = DatasetService(db, paths)
     service.delete(dataset_id)

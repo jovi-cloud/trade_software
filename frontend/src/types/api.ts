@@ -199,6 +199,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/backtests/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List backtest runs */
+        get: operations["list_backtest_runs_api_v1_backtests_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a backtest run */
+        get: operations["get_backtest_run_api_v1_backtests_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete a backtest run */
+        delete: operations["delete_backtest_run_api_v1_backtests_runs__run_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update run research journal */
+        patch: operations["update_backtest_run_research_api_v1_backtests_runs__run_id__patch"];
+        trace?: never;
+    };
     "/api/v1/backtests/execute": {
         parameters: {
             query?: never;
@@ -245,6 +281,185 @@ export interface components {
              */
             slippage: number;
         };
+        /** BacktestRunListItem */
+        BacktestRunListItem: {
+            /** Id */
+            id: string;
+            /** Strategy Id */
+            strategy_id: string;
+            /** Strategy Name */
+            strategy_name: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Name */
+            dataset_name: string;
+            /**
+             * Execution Completed At
+             * Format: date-time
+             */
+            execution_completed_at: string;
+            /** Net Profit */
+            net_profit: number;
+            /** Win Rate Pct */
+            win_rate_pct: number;
+            /** Trade Count */
+            trade_count: number;
+            status: components["schemas"]["BacktestRunStatus"];
+            /** Experiment Name */
+            experiment_name: string | null;
+            /** Research Completion Pct */
+            research_completion_pct: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** BacktestRunRead */
+        BacktestRunRead: {
+            /** Id */
+            id: string;
+            /** Strategy Id */
+            strategy_id: string;
+            /** Strategy Name */
+            strategy_name: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Name */
+            dataset_name: string;
+            /** Engine Version */
+            engine_version: string;
+            /**
+             * Execution Started At
+             * Format: date-time
+             */
+            execution_started_at: string;
+            /**
+             * Execution Completed At
+             * Format: date-time
+             */
+            execution_completed_at: string;
+            /** Execution Time Ms */
+            execution_time_ms: number;
+            /** Initial Capital */
+            initial_capital: number;
+            /** Commission */
+            commission: number;
+            /** Slippage */
+            slippage: number;
+            /** Strategy Code Snapshot */
+            strategy_code_snapshot: string;
+            /** Dataset Hash */
+            dataset_hash: string;
+            /** Strategy Hash */
+            strategy_hash: string;
+            /** Bars Processed */
+            bars_processed: number;
+            /** Trade Count */
+            trade_count: number;
+            /** Final Cash */
+            final_cash: number;
+            /** Position Closed */
+            position_closed: boolean;
+            metrics: components["schemas"]["PerformanceMetricsRead"];
+            /** Equity History */
+            equity_history: components["schemas"]["EquityPointRead"][];
+            /** Entry Markers */
+            entry_markers: components["schemas"]["TradeMarkerRead"][];
+            /** Exit Markers */
+            exit_markers: components["schemas"]["TradeMarkerRead"][];
+            /** Candles */
+            candles: components["schemas"]["CandleRead"][];
+            /** Orders */
+            orders: components["schemas"]["OrderRead"][];
+            /** Trades */
+            trades: components["schemas"]["TradeRead"][];
+            /** Strategy Logs */
+            strategy_logs: string[];
+            /** Warnings */
+            warnings: string[];
+            /** Errors */
+            errors: string[];
+            /** Completed */
+            completed: boolean;
+            status: components["schemas"]["BacktestRunStatus"];
+            /** Error Message */
+            error_message: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Experiment Name */
+            experiment_name: string | null;
+            /** Hypothesis */
+            hypothesis: string | null;
+            /** What Changed */
+            what_changed: string | null;
+            /** Expected Result */
+            expected_result: string | null;
+            /** Actual Result */
+            actual_result: string | null;
+            /** Conclusion */
+            conclusion: string | null;
+            /** Next Experiment */
+            next_experiment: string | null;
+            /** Tags */
+            tags: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Research Completion Pct */
+            research_completion_pct: number;
+            research_timeline: components["schemas"]["BacktestRunResearchTimeline"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** BacktestRunResearchTimeline */
+        BacktestRunResearchTimeline: {
+            /** Run Created */
+            run_created: boolean;
+            /** Research Completed */
+            research_completed: boolean;
+            /** Conclusion Written */
+            conclusion_written: boolean;
+        };
+        /**
+         * BacktestRunResearchUpdate
+         * @description Editable research journal fields only — execution snapshots stay immutable.
+         */
+        BacktestRunResearchUpdate: {
+            /** Experiment Name */
+            experiment_name?: string | null;
+            /** Hypothesis */
+            hypothesis?: string | null;
+            /** What Changed */
+            what_changed?: string | null;
+            /** Expected Result */
+            expected_result?: string | null;
+            /** Actual Result */
+            actual_result?: string | null;
+            /** Conclusion */
+            conclusion?: string | null;
+            /** Next Experiment */
+            next_experiment?: string | null;
+            /** Tags */
+            tags?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /**
+         * BacktestRunStatus
+         * @description Terminal state of a persisted backtest run.
+         * @enum {string}
+         */
+        BacktestRunStatus: "completed" | "failed";
         /** BarRow */
         BarRow: {
             /**
@@ -274,6 +489,21 @@ export interface components {
             /** Exchange */
             exchange: string;
             timeframe: components["schemas"]["Timeframe"];
+        };
+        /** CandleRead */
+        CandleRead: {
+            /** Ts */
+            ts: number;
+            /** Open */
+            open: number;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Close */
+            close: number;
+            /** Volume */
+            volume: number;
         };
         /** DatasetPreview */
         DatasetPreview: {
@@ -343,21 +573,6 @@ export interface components {
              */
             gap_samples: string[];
         };
-        /** CandleRead */
-        CandleRead: {
-            /** Ts */
-            ts: number;
-            /** Open */
-            open: number;
-            /** High */
-            high: number;
-            /** Low */
-            low: number;
-            /** Close */
-            close: number;
-            /** Volume */
-            volume: number;
-        };
         /** EquityPointRead */
         EquityPointRead: {
             /** Trade Number */
@@ -372,6 +587,8 @@ export interface components {
          * @description Outcome of one in-process replay with performance analytics.
          */
         ExecutionResultRead: {
+            /** Run Id */
+            run_id?: string | null;
             /** Completed */
             completed: boolean;
             /** Bars Processed */
@@ -479,6 +696,17 @@ export interface components {
          * @enum {string}
          */
         OrderType: "buy_market" | "sell_market" | "close";
+        /** Page[BacktestRunListItem] */
+        Page_BacktestRunListItem_: {
+            /** Items */
+            items: components["schemas"]["BacktestRunListItem"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** Page[DatasetRead] */
         Page_DatasetRead_: {
             /** Items */
@@ -761,7 +989,6 @@ export interface components {
          * @enum {string}
          */
         Timeframe: "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "1d" | "1w";
-        /** TradeRead */
         /** TradeMarkerRead */
         TradeMarkerRead: {
             /** Ts */
@@ -774,6 +1001,7 @@ export interface components {
             /** Marker Kind */
             marker_kind: string;
         };
+        /** TradeRead */
         TradeRead: {
             /** Seq */
             seq: number;
@@ -1307,6 +1535,141 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatasetPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_backtest_runs_api_v1_backtests_runs_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                strategy_id?: string | null;
+                dataset_id?: string | null;
+                status?: components["schemas"]["BacktestRunStatus"] | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                sort?: "created_at" | "execution_completed_at" | "net_profit" | "trade_count";
+                order?: "asc" | "desc";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BacktestRunListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_backtest_run_api_v1_backtests_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacktestRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_backtest_run_api_v1_backtests_runs__run_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_backtest_run_research_api_v1_backtests_runs__run_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BacktestRunResearchUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacktestRunRead"];
                 };
             };
             /** @description Validation Error */

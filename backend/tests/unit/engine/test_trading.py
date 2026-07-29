@@ -110,6 +110,19 @@ def test_second_buy_while_position_open_warns() -> None:
     assert sum(1 for order in result.orders if order.status is OrderStatus.FILLED) == 1
 
 
+def test_slippage_trade_reconciles_with_final_cash() -> None:
+    result = ExecutionEngine(
+        ExecutionConfig(initial_capital=10_000, commission=0, slippage=0.01)
+    ).run(
+        strategy_source=BUY_SELL_STRATEGY,
+        bars=_bars([100, 100, 103, 103]),
+    )
+
+    assert result.trade_count == 1
+    trade = result.trades[0]
+    assert result.final_cash == 10_000 + trade.net_pnl
+
+
 def test_commission_and_slippage_reduce_cash() -> None:
     no_cost = ExecutionEngine(ExecutionConfig(initial_capital=10_000)).run(
         strategy_source=BUY_HOLD_STRATEGY,

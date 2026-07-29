@@ -40,6 +40,7 @@ def db_engine(settings: Settings) -> Iterator[Engine]:
     the real ``data/app.db``. Building the engine directly here, and
     overriding ``get_db`` below, keeps each test on its own SQLite file.
     """
+    import app.models  # noqa: F401 — register ORM tables on Base.metadata
     from app.db.base import Base
     from app.db.session import create_db_engine
 

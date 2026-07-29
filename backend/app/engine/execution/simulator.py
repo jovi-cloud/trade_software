@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.domain.enums import OrderStatus, OrderType, PositionSide
-from app.domain.money import round_money
+from app.domain.money import mul_money, round_money, round_price
 from app.engine.bars import Bar
 from app.engine.execution.order import Order
 from app.engine.execution.order_book import OrderBook
@@ -55,10 +55,10 @@ class ExecutionSimulator:
             self._warnings.append(f"Order {order.id} rejected: position already open")
             return
 
-        fill_price = round_money(bar.open * (1 + self._config.slippage))
-        slippage_cost = round_money(order.quantity * bar.open * self._config.slippage)
-        commission = round_money(order.quantity * fill_price * self._config.commission)
-        total_cost = round_money(order.quantity * fill_price + commission)
+        fill_price = round_price(bar.open * (1 + self._config.slippage))
+        slippage_cost = round_money(mul_money(order.quantity, bar.open * self._config.slippage))
+        commission = round_money(mul_money(order.quantity * fill_price, self._config.commission))
+        total_cost = round_money(mul_money(order.quantity, fill_price) + commission)
 
         if total_cost > self._portfolio.cash:
             self._order_book.mark_rejected(order, "Insufficient cash")
@@ -81,9 +81,9 @@ class ExecutionSimulator:
             self._warnings.append(f"Order {order.id} rejected: position already open")
             return
 
-        fill_price = round_money(bar.open * (1 - self._config.slippage))
-        slippage_cost = round_money(order.quantity * bar.open * self._config.slippage)
-        commission = round_money(order.quantity * fill_price * self._config.commission)
+        fill_price = round_price(bar.open * (1 - self._config.slippage))
+        slippage_cost = round_money(mul_money(order.quantity, bar.open * self._config.slippage))
+        commission = round_money(mul_money(order.quantity * fill_price, self._config.commission))
 
         self._portfolio.open_short(
             quantity=order.quantity,
@@ -103,16 +103,24 @@ class ExecutionSimulator:
             return
 
         if position.side is PositionSide.LONG:
-            fill_price = round_money(bar.open * (1 - self._config.slippage))
-            slippage_cost = round_money(position.quantity * bar.open * self._config.slippage)
-            commission = round_money(position.quantity * fill_price * self._config.commission)
-            proceeds = round_money(position.quantity * fill_price - commission)
+            fill_price = round_price(bar.open * (1 - self._config.slippage))
+            slippage_cost = round_money(
+                mul_money(position.quantity, bar.open * self._config.slippage)
+            )
+            commission = round_money(
+                mul_money(position.quantity * fill_price, self._config.commission)
+            )
+            proceeds = round_money(mul_money(position.quantity, fill_price) - commission)
             self._portfolio.credit_cash(proceeds)
         else:
-            fill_price = round_money(bar.open * (1 + self._config.slippage))
-            slippage_cost = round_money(position.quantity * bar.open * self._config.slippage)
-            commission = round_money(position.quantity * fill_price * self._config.commission)
-            cost = round_money(position.quantity * fill_price + commission)
+            fill_price = round_price(bar.open * (1 + self._config.slippage))
+            slippage_cost = round_money(
+                mul_money(position.quantity, bar.open * self._config.slippage)
+            )
+            commission = round_money(
+                mul_money(position.quantity * fill_price, self._config.commission)
+            )
+            cost = round_money(mul_money(position.quantity, fill_price) + commission)
             self._portfolio.debit_cash(cost)
 
         closed = self._portfolio.close_position()

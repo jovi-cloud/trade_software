@@ -30,6 +30,9 @@ export const qk = {
     all: ['backtests'] as const,
     execute: () => [...qk.backtests.all, 'execute'] as const,
   },
-  // Phase 3: jobs
-  // Phase 4: results
+  backtestRuns: {
+    all: ['backtest-runs'] as const,
+    list: (params: Record<string, unknown>) => [...qk.backtestRuns.all, 'list', params] as const,
+    detail: (id: string) => [...qk.backtestRuns.all, 'detail', id] as const,
+  },
 } as const

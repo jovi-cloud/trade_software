@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from app.domain.money import round_money
+from app.domain.money import round_money, round_percent
 from app.engine.execution.trade import Trade
 from app.engine.results.metrics_result import EquityPoint, PerformanceMetrics
 
@@ -59,9 +59,7 @@ class MetricsEngine:
 
         winning_trades = len(winners)
         losing_trades = len(losers)
-        win_rate_pct = round_money(
-            (winning_trades / total_trades * 100) if total_trades else 0.0
-        )
+        win_rate_pct = round_percent((winning_trades / total_trades * 100) if total_trades else 0.0)
 
         average_win = round_money(gross_profit / winning_trades) if winning_trades else 0.0
         average_loss = round_money(gross_loss / losing_trades) if losing_trades else 0.0
@@ -86,7 +84,7 @@ class MetricsEngine:
         commission_paid = round_money(sum(trade.commission for trade in trades))
         slippage_cost = round_money(sum(trade.slippage_cost for trade in trades))
         return_pct = (
-            round_money((final_cash - initial_capital) / initial_capital * 100)
+            round_percent((final_cash - initial_capital) / initial_capital * 100)
             if initial_capital > 0
             else 0.0
         )

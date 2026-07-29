@@ -11,9 +11,7 @@ Usable standalone - bars in, result out, no database and no web server::
     bars = BarIterator([Bar(ts=0, open=1, high=2, low=0.5, close=1.5, volume=10)])
     result = ExecutionEngine(ExecutionConfig()).run(
         strategy_source=(
-            "class Strategy:\\n"
-            "    def on_bar(self, bar):\\n"
-            "        self.ctx.log(bar.close)\\n"
+            "class Strategy:\\n    def on_bar(self, bar):\\n        self.ctx.log(bar.close)\\n"
         ),
         bars=bars,
     )

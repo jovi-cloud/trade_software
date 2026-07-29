@@ -73,6 +73,7 @@ def test_execute_replays_strategy_against_dataset(client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.json()
+    assert body["run_id"] is not None
     assert body["completed"] is True
     assert body["bars_processed"] == 3
     assert body["errors"] == []

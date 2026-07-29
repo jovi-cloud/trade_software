@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.domain.enums import PositionSide
-from app.domain.money import round_money
+from app.domain.money import add_money, mul_money, round_money, sub_money
 from app.engine.execution.position import Position, PositionView
 
 
@@ -34,8 +34,8 @@ class PortfolioManager:
         commission: float,
         slippage_cost: float,
     ) -> None:
-        cost = round_money(quantity * fill_price + commission)
-        self.cash = round_money(self.cash - cost)
+        cost = round_money(mul_money(quantity, fill_price) + commission)
+        self.cash = sub_money(self.cash, cost)
         self.position = Position(
             side=PositionSide.LONG,
             quantity=quantity,
@@ -56,8 +56,8 @@ class PortfolioManager:
         commission: float,
         slippage_cost: float,
     ) -> None:
-        proceeds = round_money(quantity * fill_price - commission)
-        self.cash = round_money(self.cash + proceeds)
+        proceeds = round_money(mul_money(quantity, fill_price) - commission)
+        self.cash = add_money(self.cash, proceeds)
         self.position = Position(
             side=PositionSide.SHORT,
             quantity=quantity,
@@ -76,7 +76,7 @@ class PortfolioManager:
         return closed
 
     def credit_cash(self, amount: float) -> None:
-        self.cash = round_money(self.cash + amount)
+        self.cash = add_money(self.cash, amount)
 
     def debit_cash(self, amount: float) -> None:
-        self.cash = round_money(self.cash - amount)
+        self.cash = sub_money(self.cash, amount)

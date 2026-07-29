@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.paths import DataPaths
+from app.data.errors import InvalidBarsError
 from app.data.loader import load_bars
 from app.domain.enums import ImportStatus
 from app.engine.bars import BarIterator
@@ -53,7 +54,10 @@ class ExecutionService:
         self, *, strategy_id: str, dataset_id: str, config: ExecutionConfig
     ) -> ExecutionResult:
         source = self._load_source(strategy_id)
-        rows = load_bars(self._resolve_parquet(dataset_id))
+        try:
+            rows = load_bars(self._resolve_parquet(dataset_id))
+        except InvalidBarsError as exc:
+            raise ValidationError(str(exc)) from exc
         engine = ExecutionEngine(config)
         result = engine.run(strategy_source=source, bars=BarIterator.from_rows(rows))
         enriched = self.metrics_service.enrich(result, initial_capital=config.initial_capital)

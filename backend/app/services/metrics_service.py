@@ -15,9 +15,7 @@ class MetricsService:
     def __init__(self, engine: MetricsEngine | None = None) -> None:
         self.engine = engine or MetricsEngine()
 
-    def enrich(
-        self, result: ExecutionResult, *, initial_capital: float
-    ) -> ExecutionResult:
+    def enrich(self, result: ExecutionResult, *, initial_capital: float) -> ExecutionResult:
         metrics, equity_history = self.engine.compute(
             trades=result.trades,
             initial_capital=initial_capital,
