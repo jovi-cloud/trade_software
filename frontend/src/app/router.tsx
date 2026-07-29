@@ -13,6 +13,7 @@ const StrategyDetailPage = lazy(() => import('@/pages/strategies/StrategyDetailP
 const DataLibraryPage = lazy(() => import('@/pages/data/DataLibraryPage'))
 const ImportDataPage = lazy(() => import('@/pages/data/ImportDataPage'))
 const DatasetDetailPage = lazy(() => import('@/pages/data/DatasetDetailPage'))
+const RunBacktestPage = lazy(() => import('@/pages/backtests/RunBacktestPage'))
 
 function PageFallback() {
   return <div className="p-6 text-sm text-muted-foreground">Loading…</div>
@@ -87,7 +88,15 @@ const routes: RouteObject[] = [
           </Suspense>
         ),
       },
-      // Phase 3: /backtests  Phase 4: /results  Phase 5: /notes
+      {
+        path: 'backtests',
+        element: (
+          <Suspense fallback={<PageFallback />}>
+            <RunBacktestPage />
+          </Suspense>
+        ),
+      },
+      // Phase 4: /results  Phase 5: /notes
       {
         path: '*',
         element: (

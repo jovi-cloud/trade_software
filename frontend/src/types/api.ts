@@ -199,10 +199,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/backtests/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay a strategy against a dataset */
+        post: operations["execute_backtest_api_v1_backtests_execute_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BacktestExecuteRequest
+         * @description Inputs for replaying a saved strategy against a saved dataset.
+         */
+        BacktestExecuteRequest: {
+            /** Strategy Id */
+            strategy_id: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /**
+             * Initial Capital
+             * @default 100000
+             */
+            initial_capital: number;
+            /**
+             * Commission
+             * @default 0
+             */
+            commission: number;
+            /**
+             * Slippage
+             * @default 0
+             */
+            slippage: number;
+        };
         /** BarRow */
         BarRow: {
             /**
@@ -301,6 +343,67 @@ export interface components {
              */
             gap_samples: string[];
         };
+        /** CandleRead */
+        CandleRead: {
+            /** Ts */
+            ts: number;
+            /** Open */
+            open: number;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Close */
+            close: number;
+            /** Volume */
+            volume: number;
+        };
+        /** EquityPointRead */
+        EquityPointRead: {
+            /** Trade Number */
+            trade_number: number;
+            /** Equity */
+            equity: number;
+            /** Timestamp */
+            timestamp: number;
+        };
+        /**
+         * ExecutionResultRead
+         * @description Outcome of one in-process replay with performance analytics.
+         */
+        ExecutionResultRead: {
+            /** Completed */
+            completed: boolean;
+            /** Bars Processed */
+            bars_processed: number;
+            /** Execution Time Ms */
+            execution_time_ms: number;
+            /** Errors */
+            errors: string[];
+            /** Warnings */
+            warnings: string[];
+            /** Strategy Logs */
+            strategy_logs: string[];
+            /** Orders */
+            orders: components["schemas"]["OrderRead"][];
+            /** Trades */
+            trades: components["schemas"]["TradeRead"][];
+            /** Final Cash */
+            final_cash: number;
+            /** Position Closed */
+            position_closed: boolean;
+            /** Trade Count */
+            trade_count: number;
+            metrics: components["schemas"]["PerformanceMetricsRead"];
+            /** Equity History */
+            equity_history: components["schemas"]["EquityPointRead"][];
+            /** Candles */
+            candles: components["schemas"]["CandleRead"][];
+            /** Entry Markers */
+            entry_markers: components["schemas"]["TradeMarkerRead"][];
+            /** Exit Markers */
+            exit_markers: components["schemas"]["TradeMarkerRead"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -333,6 +436,49 @@ export interface components {
          * @enum {string}
          */
         MarketType: "equity" | "futures" | "options" | "fx" | "crypto" | "index";
+        /** OrderRead */
+        OrderRead: {
+            /** Id */
+            id: number;
+            order_type: components["schemas"]["OrderType"];
+            /** Quantity */
+            quantity: number;
+            /** Submitted Bar Index */
+            submitted_bar_index: number;
+            /** Submitted Ts */
+            submitted_ts: number;
+            status: components["schemas"]["OrderStatus"];
+            /** Fill Price */
+            fill_price?: number | null;
+            /** Fill Ts */
+            fill_ts?: number | null;
+            /** Filled Bar Index */
+            filled_bar_index?: number | null;
+            /**
+             * Commission
+             * @default 0
+             */
+            commission: number;
+            /**
+             * Slippage Cost
+             * @default 0
+             */
+            slippage_cost: number;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+        };
+        /**
+         * OrderStatus
+         * @description Lifecycle of a submitted order.
+         * @enum {string}
+         */
+        OrderStatus: "pending" | "filled" | "rejected";
+        /**
+         * OrderType
+         * @description Market order types supported in engine v1.
+         * @enum {string}
+         */
+        OrderType: "buy_market" | "sell_market" | "close";
         /** Page[DatasetRead] */
         Page_DatasetRead_: {
             /** Items */
@@ -355,6 +501,53 @@ export interface components {
             /** Offset */
             offset: number;
         };
+        /** PerformanceMetricsRead */
+        PerformanceMetricsRead: {
+            /** Net Profit */
+            net_profit: number;
+            /** Gross Profit */
+            gross_profit: number;
+            /** Gross Loss */
+            gross_loss: number;
+            /** Total Trades */
+            total_trades: number;
+            /** Winning Trades */
+            winning_trades: number;
+            /** Losing Trades */
+            losing_trades: number;
+            /** Win Rate Pct */
+            win_rate_pct: number;
+            /** Average Win */
+            average_win: number;
+            /** Average Loss */
+            average_loss: number;
+            /** Largest Win */
+            largest_win: number;
+            /** Largest Loss */
+            largest_loss: number;
+            /** Profit Factor */
+            profit_factor: number;
+            /** Expectancy */
+            expectancy: number;
+            /** Average Trade */
+            average_trade: number;
+            /** Average Holding Bars */
+            average_holding_bars: number;
+            /** Commission Paid */
+            commission_paid: number;
+            /** Slippage Cost */
+            slippage_cost: number;
+            /** Final Cash */
+            final_cash: number;
+            /** Return Pct */
+            return_pct: number;
+        };
+        /**
+         * PositionSide
+         * @description Direction of an open position.
+         * @enum {string}
+         */
+        PositionSide: "long" | "short";
         /**
          * Priority
          * @description How urgently a strategy idea deserves research attention.
@@ -568,6 +761,44 @@ export interface components {
          * @enum {string}
          */
         Timeframe: "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "1d" | "1w";
+        /** TradeRead */
+        /** TradeMarkerRead */
+        TradeMarkerRead: {
+            /** Ts */
+            ts: number;
+            /** Price */
+            price: number;
+            /** Trade Seq */
+            trade_seq: number;
+            side: components["schemas"]["PositionSide"];
+            /** Marker Kind */
+            marker_kind: string;
+        };
+        TradeRead: {
+            /** Seq */
+            seq: number;
+            side: components["schemas"]["PositionSide"];
+            /** Quantity */
+            quantity: number;
+            /** Entry Ts */
+            entry_ts: number;
+            /** Entry Price */
+            entry_price: number;
+            /** Exit Ts */
+            exit_ts: number;
+            /** Exit Price */
+            exit_price: number;
+            /** Gross Pnl */
+            gross_pnl: number;
+            /** Commission */
+            commission: number;
+            /** Slippage Cost */
+            slippage_cost: number;
+            /** Net Pnl */
+            net_pnl: number;
+            /** Bars Held */
+            bars_held: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1076,6 +1307,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatasetPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execute_backtest_api_v1_backtests_execute_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BacktestExecuteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionResultRead"];
                 };
             };
             /** @description Validation Error */

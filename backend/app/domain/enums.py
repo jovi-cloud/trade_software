@@ -58,3 +58,26 @@ class ImportStatus(StrEnum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class OrderType(StrEnum):
+    """Market order types supported in engine v1."""
+
+    BUY_MARKET = "buy_market"
+    SELL_MARKET = "sell_market"
+    CLOSE = "close"
+
+
+class OrderStatus(StrEnum):
+    """Lifecycle of a submitted order."""
+
+    PENDING = "pending"
+    FILLED = "filled"
+    REJECTED = "rejected"
+
+
+class PositionSide(StrEnum):
+    """Direction of an open position."""
+
+    LONG = "long"
+    SHORT = "short"

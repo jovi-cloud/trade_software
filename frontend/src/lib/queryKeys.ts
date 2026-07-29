@@ -26,8 +26,10 @@ export const qk = {
     preview: (id: string, part: PreviewPart, rows: number) =>
       [...qk.datasets.all, 'preview', id, part, rows] as const,
   },
-  // Phase 1: instruments
-  // Phase 2: strategy versions
-  // Phase 3: backtests, jobs
+  backtests: {
+    all: ['backtests'] as const,
+    execute: () => [...qk.backtests.all, 'execute'] as const,
+  },
+  // Phase 3: jobs
   // Phase 4: results
 } as const
