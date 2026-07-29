@@ -1,0 +1,1 @@
+"""Indicator library and registry."""
