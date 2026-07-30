@@ -130,9 +130,7 @@ def _collect_trade_graph(
     return tuple(sorted(seen.values(), key=lambda item: (item.timestamp_ms, item.seq)))
 
 
-def _event_belongs_to_trade(
-    event: ExplainEvent, trade_id: int, order_ids: tuple[int, ...]
-) -> bool:
+def _event_belongs_to_trade(event: ExplainEvent, trade_id: int, order_ids: tuple[int, ...]) -> bool:
     if event.trade_id == trade_id:
         return True
     if event.order_id is not None and event.order_id in order_ids:

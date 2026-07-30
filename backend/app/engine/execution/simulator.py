@@ -213,7 +213,5 @@ class ExecutionSimulator:
         if position is None:
             return self._portfolio.cash
         if position.side is PositionSide.LONG:
-            return round_money(
-                self._portfolio.cash + mul_money(position.quantity, mark_price)
-            )
+            return round_money(self._portfolio.cash + mul_money(position.quantity, mark_price))
         return self._portfolio.cash

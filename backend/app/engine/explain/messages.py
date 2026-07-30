@@ -43,21 +43,14 @@ def bar_processing_started_message(*, bar_index: int) -> str:
     return f"Processing price bar {bar_index + 1}."
 
 
-def conditions_evaluated_message(
-    *, bar_index: int, passed_count: int, total_count: int
-) -> str:
+def conditions_evaluated_message(*, bar_index: int, passed_count: int, total_count: int) -> str:
     if total_count == 0:
         return f"No strategy conditions were traced on bar {bar_index + 1}."
-    return (
-        f"Evaluated {total_count} condition(s) on bar {bar_index + 1}; "
-        f"{passed_count} passed."
-    )
+    return f"Evaluated {total_count} condition(s) on bar {bar_index + 1}; {passed_count} passed."
 
 
 def signal_generated_message(*, action: str, quantity: float, bar_index: int) -> str:
-    return (
-        f"Strategy signalled {action} for {quantity:g} shares on bar {bar_index + 1}."
-    )
+    return f"Strategy signalled {action} for {quantity:g} shares on bar {bar_index + 1}."
 
 
 def signal_rejected_message(*, action: str, reason: str) -> str:
@@ -99,8 +92,7 @@ def position_updated_message(
 ) -> str:
     side_label = "Long" if side is PositionSide.LONG else "Short"
     return (
-        f"{side_label} position marked at {mark_price:,.4f}; "
-        f"unrealized P&L {unrealized_pnl:,.2f}."
+        f"{side_label} position marked at {mark_price:,.4f}; unrealized P&L {unrealized_pnl:,.2f}."
     )
 
 
@@ -116,9 +108,7 @@ def metrics_generated_message(*, trade_count: int) -> str:
 
 
 def charts_generated_message(*, candle_count: int, marker_count: int) -> str:
-    return (
-        f"Chart data prepared: {candle_count:,} candles and {marker_count} trade marker(s)."
-    )
+    return f"Chart data prepared: {candle_count:,} candles and {marker_count} trade marker(s)."
 
 
 def run_completed_message(*, completed: bool, trade_count: int) -> str:

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from app.domain.explain import ExplainLevel
 from app.engine.bars import BarIterator
 from app.engine.context import ExecutionContext, LogCollector
-from app.engine.errors import StrategyCompileError
+from app.engine.errors import EngineError, StrategyCompileError
 from app.engine.execution.order import Order
 from app.engine.execution.order_book import OrderBook
 from app.engine.execution.order_service import OrderService
@@ -18,7 +18,7 @@ from app.engine.execution.trade_manager import TradeManager
 from app.engine.explain import ExplainCollector
 from app.engine.explain.condition_collector import ConditionCollector
 from app.engine.results.result import ExecutionResult
-from app.engine.strategy.loader import StrategyLoader
+from app.engine.strategy.provider import SourceStrategyProvider, StrategyProvider
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,27 @@ class ExecutionEngine:
     def __init__(self, config: ExecutionConfig | None = None) -> None:
         self.config = config or ExecutionConfig()
 
-    def run(self, *, strategy_source: str, bars: BarIterator) -> ExecutionResult:
+    def run(
+        self,
+        *,
+        bars: BarIterator,
+        strategy_source: str | None = None,
+        strategy: StrategyProvider | None = None,
+    ) -> ExecutionResult:
+        """Replay ``bars`` through a strategy.
+
+        Pass ``strategy_source`` for user-authored code (the original and still
+        the default path) or ``strategy`` for any other provider - a library
+        strategy, for instance. Exactly one is required. Everything after the
+        strategy is obtained is identical either way: same bar loop, same fill
+        timing, same portfolio, same metrics.
+        """
+        if (strategy_source is None) == (strategy is None):
+            raise EngineError("Provide exactly one of strategy_source or strategy")
+        provider: StrategyProvider = (
+            strategy if strategy is not None else SourceStrategyProvider(strategy_source or "")
+        )
+
         started = time.perf_counter()
         logs = LogCollector()
         errors: list[str] = []
@@ -73,9 +93,8 @@ class ExecutionEngine:
             if bar_list:
                 collector.set_clock(bar_list[0].ts)
 
-        loader = StrategyLoader(logs)
         try:
-            strategy = loader.load(strategy_source)
+            loaded = provider.load(logs)
         except StrategyCompileError as exc:
             location = f" (line {exc.line})" if exc.line is not None else ""
             detail = f"{exc.message}{location}"
@@ -98,11 +117,11 @@ class ExecutionEngine:
         if collector is not None:
             collector.record_strategy_loaded()
 
-        if not strategy.defined_hooks:
+        if not loaded.defined_hooks:
             warnings.append(
                 "Strategy defines none of on_start/on_bar/on_stop; the run will do nothing."
             )
-        elif not strategy.defines_on_bar:
+        elif not loaded.defines_on_bar:
             warnings.append("Strategy defines no on_bar hook; bars were replayed but unused.")
 
         if len(bar_list) == 0:
@@ -131,14 +150,14 @@ class ExecutionEngine:
             logs=logs,
             condition_collector=condition_collector,
         )
-        strategy.bind_context(context)
+        loaded.bind_context(context)
 
         bars_processed = 0
         completed = True
         pending: list[Order] = []
 
         try:
-            strategy.call_on_start()
+            loaded.call_on_start()
         except Exception as exc:
             errors.append(f"on_start raised {type(exc).__name__}: {exc}")
             if collector is not None:
@@ -168,7 +187,7 @@ class ExecutionEngine:
 
             context.advance_to(bar, bar_index=index)
             try:
-                strategy.call_on_bar(bar)
+                loaded.call_on_bar(bar)
             except Exception as exc:
                 errors.append(
                     f"on_bar raised {type(exc).__name__} at bar {index} "
@@ -216,7 +235,7 @@ class ExecutionEngine:
 
         if completed:
             try:
-                strategy.call_on_stop()
+                loaded.call_on_stop()
             except Exception as exc:
                 errors.append(f"on_stop raised {type(exc).__name__}: {exc}")
                 completed = False

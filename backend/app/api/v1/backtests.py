@@ -69,8 +69,7 @@ def _to_response(
             TradeMarkerRead.model_validate(asdict(marker)) for marker in result.exit_markers
         ],
         explain_events=[
-            ExplainEventRead.model_validate(event_to_dict(event))
-            for event in result.explain_events
+            ExplainEventRead.model_validate(event_to_dict(event)) for event in result.explain_events
         ],
         explain_level=result.explain_level,
     )
@@ -86,28 +85,32 @@ def execute_backtest(
 ) -> ExecutionResultRead:
     execution_service = ExecutionService(db, paths)
     run_service = BacktestRunService(db, paths)
-    dataset = execution_service.dataset_repo.get(payload.dataset_id)
-    instrument = dataset.name if dataset else None
-    timeframe = dataset.timeframe if dataset else None
-    config = execution_service.build_config(
+    plan = execution_service.plan(
+        dataset_id=payload.dataset_id,
+        strategy_id=payload.strategy_id,
+        library_strategy_id=payload.library_strategy_id,
+        strategy_params=payload.strategy_params,
         initial_capital=payload.initial_capital,
         commission=payload.commission,
         slippage=payload.slippage,
         explain_level=payload.explain_level,
-        instrument=instrument,
-        timeframe=timeframe,
     )
     started_at = utcnow()
     result = execution_service.execute(
-        strategy_id=payload.strategy_id,
-        dataset_id=payload.dataset_id,
-        config=config,
+        strategy_id=plan.strategy_id,
+        dataset_id=plan.dataset_id,
+        config=plan.config,
+        strategy=plan.strategy,
     )
     run = run_service.create_from_execution(
-        strategy_id=payload.strategy_id,
-        dataset_id=payload.dataset_id,
-        config=config,
+        strategy_id=plan.strategy_id,
+        dataset_id=plan.dataset_id,
+        config=plan.config,
         result=result,
         started_at=started_at,
+        strategy_snapshot=plan.strategy.snapshot,
+        library_strategy_id=plan.strategy.library_strategy_id,
+        library_strategy_version=plan.strategy.library_strategy_version,
+        strategy_params=plan.strategy.params or None,
     )
-    return _to_response(result, initial_capital=config.initial_capital, run_id=run.id)
+    return _to_response(result, initial_capital=plan.config.initial_capital, run_id=run.id)

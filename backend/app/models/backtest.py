@@ -43,6 +43,13 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     dataset_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     strategy_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
+    # Null for a run of hand-written code. Populated for a library run so the
+    # result can offer "run this again" and "back to the library entry" without
+    # parsing them back out of the code snapshot.
+    library_strategy_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    library_strategy_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    strategy_params_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     bars_processed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     trade_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     final_cash: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

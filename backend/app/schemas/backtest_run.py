@@ -57,10 +57,15 @@ class BacktestRunResearchTimeline(BaseModel):
     conclusion_written: bool
 
 
+#: A parameter value as it crosses the API, matching ParamValueRead.
+ParamValueRead = bool | int | float | str
+
+
 class BacktestRunListItem(BaseModel):
     id: str
     strategy_id: str
     strategy_name: str
+    library_strategy_id: str | None = None
     dataset_id: str
     dataset_name: str
     execution_completed_at: datetime
@@ -89,6 +94,13 @@ class BacktestRunRead(BaseModel):
     strategy_code_snapshot: str
     dataset_hash: str
     strategy_hash: str
+    library_strategy_id: str | None = Field(
+        default=None, description="Set when a built-in strategy produced this run"
+    )
+    library_strategy_version: str | None = None
+    strategy_params: dict[str, ParamValueRead] | None = Field(
+        default=None, description="Resolved parameter values a library run used"
+    )
     bars_processed: int = Field(ge=0)
     trade_count: int = Field(ge=0)
     final_cash: float
@@ -152,6 +164,7 @@ def list_item_from_row(run: Any, strategy_name: str, dataset_name: str) -> Backt
         id=run.id,
         strategy_id=run.strategy_id,
         strategy_name=strategy_name,
+        library_strategy_id=run.library_strategy_id,
         dataset_id=run.dataset_id,
         dataset_name=dataset_name,
         execution_completed_at=run.execution_completed_at,
@@ -196,6 +209,11 @@ def read_from_row(run: Any, strategy_name: str, dataset_name: str) -> BacktestRu
         strategy_code_snapshot=run.strategy_code_snapshot,
         dataset_hash=run.dataset_hash,
         strategy_hash=run.strategy_hash,
+        library_strategy_id=run.library_strategy_id,
+        library_strategy_version=run.library_strategy_version,
+        strategy_params=(
+            None if run.strategy_params_json is None else json.loads(run.strategy_params_json)
+        ),
         bars_processed=run.bars_processed,
         trade_count=run.trade_count,
         final_cash=run.final_cash,

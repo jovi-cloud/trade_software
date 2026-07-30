@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from 'node:path'
 
 import tailwindcss from '@tailwindcss/vite'
@@ -6,6 +7,12 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Vitest covers lib/ and the pure logic behind features (ARCHITECTURE.md 9);
+  // presentational components are not chased for coverage.
+  test: {
+    include: ['src/**/*.test.ts'],
+    environment: 'node',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -108,14 +109,32 @@ class BacktestRunService:
         config: ExecutionConfig,
         result: ExecutionResult,
         started_at: datetime,
+        strategy_snapshot: str | None = None,
+        library_strategy_id: str | None = None,
+        library_strategy_version: str | None = None,
+        strategy_params: Mapping[str, object] | None = None,
     ) -> BacktestRun:
+        """Persist one completed replay.
+
+        ``strategy_snapshot`` overrides what is recorded as the code that ran.
+        It is supplied for a library-strategy run, where the reproducibility
+        record is a pinned id, version and parameter set rather than source
+        text. Omitted, the saved code is snapshotted exactly as before.
+
+        The ``library_*`` fields record the same pinning as columns, so the
+        result screen can link back to the library entry and re-run it without
+        parsing the snapshot text.
+        """
         strategy = self.strategy_repo.get(strategy_id)
         if strategy is None:
             raise NotFoundError(f"Strategy '{strategy_id}' not found")
 
-        code = self.code_repo.get_by_strategy_id(strategy_id)
-        if code is None or not code.code.strip():
-            raise ValidationError("This strategy has no code saved yet")
+        snapshot = strategy_snapshot
+        if snapshot is None:
+            code = self.code_repo.get_by_strategy_id(strategy_id)
+            if code is None or not code.code.strip():
+                raise ValidationError("This strategy has no code saved yet")
+            snapshot = code.code
 
         dataset = self.dataset_repo.get(dataset_id)
         if dataset is None:
@@ -145,9 +164,14 @@ class BacktestRunService:
             initial_capital=config.initial_capital,
             commission=config.commission,
             slippage=config.slippage,
-            strategy_code_snapshot=code.code,
+            strategy_code_snapshot=snapshot,
             dataset_hash=hash_file(parquet_path),
-            strategy_hash=hash_text(code.code),
+            strategy_hash=hash_text(snapshot),
+            library_strategy_id=library_strategy_id,
+            library_strategy_version=library_strategy_version,
+            strategy_params_json=(
+                None if strategy_params is None else _json_dumps(dict(strategy_params))
+            ),
             bars_processed=result.bars_processed,
             trade_count=result.trade_count,
             final_cash=result.final_cash,

@@ -97,9 +97,7 @@ def test_narrative_layer_events_emitted_on_fills() -> None:
     order.filled_bar_index = 1
     collector.record_order_filled(order, cash=9_000.0, portfolio_value=10_000.0)
 
-    narrative = [
-        event for event in collector.events if event.layer is ExplainLayer.NARRATIVE
-    ]
+    narrative = [event for event in collector.events if event.layer is ExplainLayer.NARRATIVE]
     assert len(narrative) >= 2
     assert all(event.event_type is ExplainEventType.HUMAN_NARRATIVE for event in narrative)
 

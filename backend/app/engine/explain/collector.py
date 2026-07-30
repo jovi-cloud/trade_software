@@ -27,13 +27,13 @@ from app.engine.explain import messages
 
 @dataclass
 class _PositionObservation:
-  side: PositionSide
-  quantity: float
-  entry_price: float
-  position_id: int
-  entry_order_id: int
-  max_favorable: float = 0.0
-  max_adverse: float = 0.0
+    side: PositionSide
+    quantity: float
+    entry_price: float
+    position_id: int
+    entry_order_id: int
+    max_favorable: float = 0.0
+    max_adverse: float = 0.0
 
 
 @dataclass

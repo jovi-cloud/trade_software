@@ -43,7 +43,13 @@ export const qk = {
       [...qk.explain.all, 'trade', runId, tradeId] as const,
     tradeEvents: (runId: string, tradeId: number) =>
       [...qk.explain.all, 'trade-events', runId, tradeId] as const,
-    bar: (runId: string, barIndex: number) =>
-      [...qk.explain.all, 'bar', runId, barIndex] as const,
+    bar: (runId: string, barIndex: number) => [...qk.explain.all, 'bar', runId, barIndex] as const,
+  },
+  strategyLibrary: {
+    all: ['strategy-library'] as const,
+    list: (params: Record<string, unknown>) => [...qk.strategyLibrary.all, 'list', params] as const,
+    facets: () => [...qk.strategyLibrary.all, 'facets'] as const,
+    detail: (id: string) => [...qk.strategyLibrary.all, 'detail', id] as const,
+    documentation: (id: string) => [...qk.strategyLibrary.all, 'documentation', id] as const,
   },
 } as const

@@ -1,4 +1,13 @@
-import { BarChart3, Database, FlaskConical, History, LayoutDashboard, NotebookPen, Play } from 'lucide-react'
+import {
+  BarChart3,
+  BookOpen,
+  Database,
+  FlaskConical,
+  History,
+  LayoutDashboard,
+  NotebookPen,
+  Play,
+} from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
@@ -13,6 +22,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, enabled: true },
+  { to: '/strategy-library', label: 'Strategy Library', icon: BookOpen, enabled: true },
   { to: '/strategies', label: 'Strategies', icon: FlaskConical, enabled: true },
   { to: '/data', label: 'Data', icon: Database, enabled: true },
   { to: '/backtests', label: 'Run Backtest', icon: Play, enabled: true },

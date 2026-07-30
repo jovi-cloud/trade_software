@@ -6,6 +6,12 @@ import { AppShell } from '@/app/layout/AppShell'
 // Route pages are lazy-loaded and therefore use default exports.
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+const StrategyLibraryListPage = lazy(
+  () => import('@/pages/strategy-library/StrategyLibraryListPage'),
+)
+const StrategyLibraryDetailPage = lazy(
+  () => import('@/pages/strategy-library/StrategyLibraryDetailPage'),
+)
 const StrategyListPage = lazy(() => import('@/pages/strategies/StrategyListPage'))
 const StrategyCreatePage = lazy(() => import('@/pages/strategies/StrategyCreatePage'))
 const StrategyEditPage = lazy(() => import('@/pages/strategies/StrategyEditPage'))
@@ -31,6 +37,22 @@ const routes: RouteObject[] = [
         element: (
           <Suspense fallback={<PageFallback />}>
             <DashboardPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'strategy-library',
+        element: (
+          <Suspense fallback={<PageFallback />}>
+            <StrategyLibraryListPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'strategy-library/:id',
+        element: (
+          <Suspense fallback={<PageFallback />}>
+            <StrategyLibraryDetailPage />
           </Suspense>
         ),
       },

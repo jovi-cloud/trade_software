@@ -133,6 +133,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/strategy-library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List built-in strategies */
+        get: operations["list_library_strategies_api_v1_strategy_library_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/strategy-library/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Filter counts and any modules that failed to load */
+        get: operations["get_library_facets_api_v1_strategy_library_facets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/strategy-library/{strategy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one built-in strategy */
+        get: operations["get_library_strategy_api_v1_strategy_library__strategy_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/strategy-library/{strategy_id}/parameters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Parameter contract, grouped for the generated editor */
+        get: operations["get_library_strategy_parameters_api_v1_strategy_library__strategy_id__parameters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/strategy-library/{strategy_id}/documentation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documentation generated from the strategy's declaration */
+        get: operations["get_library_strategy_documentation_api_v1_strategy_library__strategy_id__documentation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/strategy-library/{strategy_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate parameter values without running the strategy */
+        post: operations["validate_library_strategy_params_api_v1_strategy_library__strategy_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets": {
         parameters: {
             query?: never;
@@ -255,6 +357,91 @@ export interface paths {
         patch: operations["update_backtest_run_research_api_v1_backtests_runs__run_id__patch"];
         trace?: never;
     };
+    "/api/v1/backtests/runs/{run_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List explainability events for a run */
+        get: operations["list_run_events_api_v1_backtests_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/{run_id}/trades/{trade_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect a trade reconstructed from explainability events */
+        get: operations["get_run_trade_api_v1_backtests_runs__run_id__trades__trade_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/{run_id}/trades/{trade_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List explainability events linked to a trade */
+        get: operations["list_run_trade_events_api_v1_backtests_runs__run_id__trades__trade_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/{run_id}/bars/{bar_index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect a single bar with decision and execution context */
+        get: operations["get_run_bar_api_v1_backtests_runs__run_id__bars__bar_index__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/{run_id}/bars/{bar_index}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List explainability events for a single bar */
+        get: operations["list_run_bar_events_api_v1_backtests_runs__run_id__bars__bar_index__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/backtests/execute": {
         parameters: {
             query?: never;
@@ -278,11 +465,25 @@ export interface components {
     schemas: {
         /**
          * BacktestExecuteRequest
-         * @description Inputs for replaying a saved strategy against a saved dataset.
+         * @description Inputs for replaying a strategy against a saved dataset.
+         *
+         *     ``library_strategy_id`` is additive and optional: omit it and the saved
+         *     strategy's own code runs, exactly as before. Supply it and the named
+         *     built-in strategy runs instead, configured by ``strategy_params``.
+         *
+         *     Every run is still recorded against a row in ``strategies`` - the research
+         *     container the run history and journal hang off. ``strategy_id`` names it
+         *     explicitly; omitting it for a library run lets the service resolve (and, the
+         *     first time, create) the container for that library strategy, so launching a
+         *     backtest straight from the Strategy Library does not require the trader to
+         *     hand-create a research record first.
          */
         BacktestExecuteRequest: {
-            /** Strategy Id */
-            strategy_id: string;
+            /**
+             * Strategy Id
+             * @description Research container for the run. Optional for a library strategy.
+             */
+            strategy_id?: string | null;
             /** Dataset Id */
             dataset_id: string;
             /**
@@ -300,8 +501,20 @@ export interface components {
              * @default 0
              */
             slippage: number;
-            /** @default trades_only */
-            explain_level: components["schemas"]["ExplainLevel"];
+            /** @description Omit to use the strategy's recommended level: FULL for a strategy that traces its conditions, TRADES_ONLY otherwise. */
+            explain_level?: components["schemas"]["ExplainLevel"] | null;
+            /**
+             * Library Strategy Id
+             * @description Run this built-in strategy instead of the saved code.
+             */
+            library_strategy_id?: string | null;
+            /**
+             * Strategy Params
+             * @description Parameter values for the library strategy; defaults fill any gaps.
+             */
+            strategy_params?: {
+                [key: string]: boolean | number | string;
+            } | null;
         };
         /** BacktestRunListItem */
         BacktestRunListItem: {
@@ -311,6 +524,8 @@ export interface components {
             strategy_id: string;
             /** Strategy Name */
             strategy_name: string;
+            /** Library Strategy Id */
+            library_strategy_id?: string | null;
             /** Dataset Id */
             dataset_id: string;
             /** Dataset Name */
@@ -375,6 +590,20 @@ export interface components {
             dataset_hash: string;
             /** Strategy Hash */
             strategy_hash: string;
+            /**
+             * Library Strategy Id
+             * @description Set when a built-in strategy produced this run
+             */
+            library_strategy_id?: string | null;
+            /** Library Strategy Version */
+            library_strategy_version?: string | null;
+            /**
+             * Strategy Params
+             * @description Resolved parameter values a library run used
+             */
+            strategy_params?: {
+                [key: string]: boolean | number | string;
+            } | null;
             /** Bars Processed */
             bars_processed: number;
             /** Trade Count */
@@ -486,6 +715,159 @@ export interface components {
          * @enum {string}
          */
         BacktestRunStatus: "completed" | "failed";
+        /** BarCandleRead */
+        BarCandleRead: {
+            /** Bar Index */
+            bar_index: number;
+            /** Ts */
+            ts: number;
+            /** Open */
+            open: number;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Close */
+            close: number;
+            /** Volume */
+            volume: number;
+        };
+        /** BarDecisionRead */
+        BarDecisionRead: {
+            /** Decision Type */
+            decision_type: string;
+            /** Reason Code */
+            reason_code: string;
+            /** Message */
+            message: string;
+            /** Related Event Seqs */
+            related_event_seqs?: number[];
+        };
+        /** BarExecutionSummaryRead */
+        BarExecutionSummaryRead: {
+            /** Occurred */
+            occurred: boolean;
+            /** Message */
+            message: string;
+            /** Order Ref */
+            order_ref?: number | null;
+            /** Fill Price */
+            fill_price?: number | null;
+            /** Quantity */
+            quantity?: number | null;
+            /** Commission */
+            commission?: number | null;
+            /** Slippage */
+            slippage?: number | null;
+            position?: components["schemas"]["BarPositionSummaryRead"] | null;
+            /** Pnl */
+            pnl?: number | null;
+        };
+        /** BarInspectionRead */
+        BarInspectionRead: {
+            /** Bar Index */
+            bar_index: number;
+            candle: components["schemas"]["BarCandleRead"];
+            market_state: components["schemas"]["BarMarketStateRead"];
+            /** Conditions */
+            conditions: components["schemas"]["ConditionTraceRead"][];
+            decision: components["schemas"]["BarDecisionRead"];
+            execution: components["schemas"]["BarExecutionSummaryRead"];
+            /** Timeline */
+            timeline: components["schemas"]["BarTimelineStepRead"][];
+            /** Open Orders */
+            open_orders: components["schemas"]["BarOrderSummaryRead"][];
+            /** Filled Orders */
+            filled_orders: components["schemas"]["BarOrderSummaryRead"][];
+            /** Cancelled Orders */
+            cancelled_orders: components["schemas"]["BarOrderSummaryRead"][];
+            /** Event Seqs */
+            event_seqs?: number[];
+            navigation: components["schemas"]["BarNavigationRead"];
+            /** Explain Events */
+            explain_events?: components["schemas"]["ExplainEventRead"][];
+        };
+        /** BarMarketStateRead */
+        BarMarketStateRead: {
+            /** Current Price */
+            current_price: number;
+            /** Open */
+            open: number;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Close */
+            close: number;
+            /** Volume */
+            volume: number;
+            /** Trend */
+            trend: string;
+            /** Volatility Pct */
+            volatility_pct: number;
+            /** Session */
+            session: string;
+            /** Indicators */
+            indicators?: {
+                [key: string]: number | string;
+            };
+            /** Cash */
+            cash?: number | null;
+            /** Portfolio Value */
+            portfolio_value?: number | null;
+            position?: components["schemas"]["BarPositionSummaryRead"] | null;
+        };
+        /** BarNavigationRead */
+        BarNavigationRead: {
+            /** Bar Index */
+            bar_index: number;
+            /** Bar Count */
+            bar_count: number;
+            /** Previous Bar Index */
+            previous_bar_index?: number | null;
+            /** Next Bar Index */
+            next_bar_index?: number | null;
+            /** First Signal Bar */
+            first_signal_bar?: number | null;
+            /** Last Signal Bar */
+            last_signal_bar?: number | null;
+            /** Trade Entry Bars */
+            trade_entry_bars?: number[];
+            /** Trade Exit Bars */
+            trade_exit_bars?: number[];
+        };
+        /** BarOrderSummaryRead */
+        BarOrderSummaryRead: {
+            /** Order Ref */
+            order_ref: number;
+            /** Order Type */
+            order_type: string;
+            /** Quantity */
+            quantity: number;
+            /** Status */
+            status: string;
+            /** Fill Price */
+            fill_price?: number | null;
+            /**
+             * Commission
+             * @default 0
+             */
+            commission: number;
+            /**
+             * Slippage Cost
+             * @default 0
+             */
+            slippage_cost: number;
+        };
+        /** BarPositionSummaryRead */
+        BarPositionSummaryRead: {
+            /** Side */
+            side: string;
+            /** Quantity */
+            quantity: number;
+            /** Entry Price */
+            entry_price: number;
+        };
         /** BarRow */
         BarRow: {
             /**
@@ -503,6 +885,16 @@ export interface components {
             close: number;
             /** Volume */
             volume: number;
+        };
+        /** BarTimelineStepRead */
+        BarTimelineStepRead: {
+            /** Label */
+            label: string;
+            event_type: components["schemas"]["ExplainEventType"];
+            /** Event Seq */
+            event_seq: number;
+            /** Timestamp Ms */
+            timestamp_ms: number;
         };
         /** Body_import_dataset_api_v1_datasets_import_post */
         Body_import_dataset_api_v1_datasets_import_post: {
@@ -530,6 +922,26 @@ export interface components {
             close: number;
             /** Volume */
             volume: number;
+        };
+        /** ChangelogEntryRead */
+        ChangelogEntryRead: {
+            /** Version */
+            version: string;
+            /** Date */
+            date: string;
+            /** Changes */
+            changes: string[];
+        };
+        /** ConditionTraceRead */
+        ConditionTraceRead: {
+            /** Name */
+            name: string;
+            /** Actual Value */
+            actual_value: string;
+            /** Expected Value */
+            expected_value: string;
+            /** Passed */
+            passed: boolean;
         };
         /** DatasetPreview */
         DatasetPreview: {
@@ -608,6 +1020,42 @@ export interface components {
             /** Hashes */
             hashes: string[];
         };
+        /** DocumentedExampleRead */
+        DocumentedExampleRead: {
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Instrument */
+            instrument: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+        };
+        /** DocumentedParameterRead */
+        DocumentedParameterRead: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /** Type */
+            type: string;
+            /** Description */
+            description: string;
+            /** Default */
+            default: string;
+            /** Range */
+            range: string;
+            /** Group */
+            group: string;
+            /** Tooltip */
+            tooltip: string;
+            /** Rules */
+            rules: string[];
+        };
         /** EngineValidationReportRead */
         EngineValidationReportRead: {
             /** Engine Version */
@@ -682,8 +1130,11 @@ export interface components {
         };
         /** ExplainEventRead */
         ExplainEventRead: {
-            /** Schema Version */
-            schema_version?: number;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
             /** Event Id */
             event_id: string;
             /** Seq */
@@ -726,7 +1177,9 @@ export interface components {
             /** Pnl */
             pnl?: number | null;
             /** Metadata */
-            metadata?: Record<string, unknown>;
+            metadata?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ExplainEventStatus
@@ -752,157 +1205,12 @@ export interface components {
          * @enum {string}
          */
         ExplainLevel: "none" | "trades_only" | "full";
-        /** TradeTimelineStepRead */
-        TradeTimelineStepRead: {
-            step_type: components["schemas"]["ExplainEventType"];
-            label: string;
-            event_seq: number;
-            timestamp_ms: number;
-            bar_index?: number | null;
-            price?: number | null;
-            quantity?: number | null;
-            commission?: number | null;
-            slippage?: number | null;
-            cash?: number | null;
-            portfolio_value?: number | null;
-            reason_code: string;
-            message: string;
-            related_event_seqs?: number[];
-        };
-        /** TradeSummaryRead */
-        TradeSummaryRead: {
-            trade_number: number;
-            direction: string;
-            entry_time_ms: number;
-            exit_time_ms: number;
-            entry_price: number;
-            exit_price: number;
-            gross_profit: number;
-            net_profit: number;
-            commission: number;
-            slippage: number;
-            holding_period_bars: number;
-            mae?: number | null;
-            mfe?: number | null;
-            return_pct: number;
-            risk_reward?: number | null;
-            status: components["schemas"]["TradeOutcome"];
-            order_ids?: number[];
-            position_id?: number | null;
-            event_count: number;
-        };
-        /** TradeInspectionRead */
-        TradeInspectionRead: {
-            summary: components["schemas"]["TradeSummaryRead"];
-            timeline: components["schemas"]["TradeTimelineStepRead"][];
-            event_seqs?: number[];
-        };
-        /**
-         * TradeOutcome
-         * @enum {string}
-         */
-        TradeOutcome: "winning" | "losing" | "break_even";
-        /** BarInspectionRead */
-        BarInspectionRead: {
-            bar_index: number;
-            candle: components["schemas"]["BarCandleRead"];
-            market_state: components["schemas"]["BarMarketStateRead"];
-            conditions: components["schemas"]["ConditionTraceRead"][];
-            decision: components["schemas"]["BarDecisionRead"];
-            execution: components["schemas"]["BarExecutionSummaryRead"];
-            timeline: components["schemas"]["BarTimelineStepRead"][];
-            open_orders: components["schemas"]["BarOrderSummaryRead"][];
-            filled_orders: components["schemas"]["BarOrderSummaryRead"][];
-            cancelled_orders: components["schemas"]["BarOrderSummaryRead"][];
-            event_seqs?: number[];
-            navigation: components["schemas"]["BarNavigationRead"];
-            explain_events?: components["schemas"]["ExplainEventRead"][];
-        };
-        /** BarCandleRead */
-        BarCandleRead: {
-            bar_index: number;
-            ts: number;
-            open: number;
-            high: number;
-            low: number;
-            close: number;
-            volume: number;
-        };
-        /** ConditionTraceRead */
-        ConditionTraceRead: {
-            name: string;
-            actual_value: string;
-            expected_value: string;
-            passed: boolean;
-        };
-        /** BarMarketStateRead */
-        BarMarketStateRead: {
-            current_price: number;
-            open: number;
-            high: number;
-            low: number;
-            close: number;
-            volume: number;
-            trend: string;
-            volatility_pct: number;
-            session: string;
-            indicators?: Record<string, string | number>;
-            cash?: number | null;
-            portfolio_value?: number | null;
-            position?: components["schemas"]["BarPositionSummaryRead"] | null;
-        };
-        /** BarPositionSummaryRead */
-        BarPositionSummaryRead: {
-            side: string;
-            quantity: number;
-            entry_price: number;
-        };
-        /** BarDecisionRead */
-        BarDecisionRead: {
-            decision_type: string;
-            reason_code: string;
-            message: string;
-            related_event_seqs?: number[];
-        };
-        /** BarExecutionSummaryRead */
-        BarExecutionSummaryRead: {
-            occurred: boolean;
-            message: string;
-            order_ref?: number | null;
-            fill_price?: number | null;
-            quantity?: number | null;
-            commission?: number | null;
-            slippage?: number | null;
-            position?: components["schemas"]["BarPositionSummaryRead"] | null;
-            pnl?: number | null;
-        };
-        /** BarTimelineStepRead */
-        BarTimelineStepRead: {
-            label: string;
-            event_type: components["schemas"]["ExplainEventType"];
-            event_seq: number;
-            timestamp_ms: number;
-        };
-        /** BarNavigationRead */
-        BarNavigationRead: {
-            bar_index: number;
-            bar_count: number;
-            previous_bar_index?: number | null;
-            next_bar_index?: number | null;
-            first_signal_bar?: number | null;
-            last_signal_bar?: number | null;
-            trade_entry_bars?: number[];
-            trade_exit_bars?: number[];
-        };
-        /** BarOrderSummaryRead */
-        BarOrderSummaryRead: {
-            order_ref: number;
-            order_type: string;
-            quantity: number;
-            status: string;
-            fill_price?: number | null;
-            commission?: number;
-            slippage_cost?: number;
+        /** FacetCountRead */
+        FacetCountRead: {
+            /** Value */
+            value: string;
+            /** Count */
+            count: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -930,6 +1238,162 @@ export interface components {
          * @enum {string}
          */
         ImportStatus: "processing" | "completed" | "failed";
+        /**
+         * LibraryFacetsRead
+         * @description Filter-rail counts for the Strategy Library.
+         */
+        LibraryFacetsRead: {
+            /** Total */
+            total: number;
+            /** Valid Count */
+            valid_count: number;
+            /** Invalid Count */
+            invalid_count: number;
+            /** Categories */
+            categories: components["schemas"]["FacetCountRead"][];
+            /** Tags */
+            tags: components["schemas"]["FacetCountRead"][];
+            /** Markets */
+            markets: components["schemas"]["FacetCountRead"][];
+            /** Timeframes */
+            timeframes: components["schemas"]["FacetCountRead"][];
+            /** Risk Levels */
+            risk_levels: components["schemas"]["FacetCountRead"][];
+            /** Styles */
+            styles: components["schemas"]["FacetCountRead"][];
+            /** Load Failures */
+            load_failures: components["schemas"]["LoadFailureRead"][];
+        };
+        /**
+         * LibraryStrategyListItem
+         * @description Card-sized summary for the Strategy Library grid.
+         */
+        LibraryStrategyListItem: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Version */
+            version: string;
+            /** Author */
+            author: string;
+            category: components["schemas"]["StrategyCategory"];
+            risk_level: components["schemas"]["RiskLevel"];
+            /** Markets */
+            markets: components["schemas"]["MarketType"][];
+            /** Timeframes */
+            timeframes: components["schemas"]["Timeframe"][];
+            /** Tags */
+            tags: string[];
+            /** Direction */
+            direction: string;
+            /** Styles */
+            styles: string[];
+            /** Supports Long */
+            supports_long: boolean;
+            /** Supports Short */
+            supports_short: boolean;
+            /** Supports Intraday */
+            supports_intraday: boolean;
+            /** Supports Swing */
+            supports_swing: boolean;
+            /** Supports Position Trading */
+            supports_position_trading: boolean;
+            /** Parameter Count */
+            parameter_count: number;
+            /** Is Valid */
+            is_valid: boolean;
+            /** Error Count */
+            error_count: number;
+            /** Warning Count */
+            warning_count: number;
+            /**
+             * Supports Condition Tracing
+             * @description Whether a run of this strategy fills the Decision Inspector
+             */
+            supports_condition_tracing: boolean;
+            /** @description Explainability level the run workflow defaults to for this strategy */
+            recommended_explain_level: components["schemas"]["ExplainLevel"];
+        };
+        /**
+         * LibraryStrategyRead
+         * @description Everything about one library strategy.
+         */
+        LibraryStrategyRead: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Version */
+            version: string;
+            /** Author */
+            author: string;
+            category: components["schemas"]["StrategyCategory"];
+            risk_level: components["schemas"]["RiskLevel"];
+            /** Markets */
+            markets: components["schemas"]["MarketType"][];
+            /** Timeframes */
+            timeframes: components["schemas"]["Timeframe"][];
+            /** Tags */
+            tags: string[];
+            /** Direction */
+            direction: string;
+            /** Styles */
+            styles: string[];
+            /** Supports Long */
+            supports_long: boolean;
+            /** Supports Short */
+            supports_short: boolean;
+            /** Supports Intraday */
+            supports_intraday: boolean;
+            /** Supports Swing */
+            supports_swing: boolean;
+            /** Supports Position Trading */
+            supports_position_trading: boolean;
+            /** Parameter Count */
+            parameter_count: number;
+            /** Is Valid */
+            is_valid: boolean;
+            /** Error Count */
+            error_count: number;
+            /** Warning Count */
+            warning_count: number;
+            /**
+             * Supports Condition Tracing
+             * @description Whether a run of this strategy fills the Decision Inspector
+             */
+            supports_condition_tracing: boolean;
+            /** @description Explainability level the run workflow defaults to for this strategy */
+            recommended_explain_level: components["schemas"]["ExplainLevel"];
+            /** Module */
+            module: string;
+            /** Overview */
+            overview: string;
+            /** Parameters */
+            parameters: components["schemas"]["ParamSpecRead"][];
+            /** Parameter Groups */
+            parameter_groups: components["schemas"]["ParamGroupRead"][];
+            /** Default Params */
+            default_params: {
+                [key: string]: boolean | number | string;
+            };
+            /** Examples */
+            examples: components["schemas"]["StrategyExampleRead"][];
+            /** Changelog */
+            changelog: components["schemas"]["ChangelogEntryRead"][];
+            validation: components["schemas"]["StrategyValidationRead"];
+        };
+        /** LoadFailureRead */
+        LoadFailureRead: {
+            /** Module */
+            module: string;
+            /** Error */
+            error: string;
+        };
         /**
          * MarketType
          * @description Asset class a strategy targets (mirrors instruments.asset_class, ARCHITECTURE.md 3.2).
@@ -1001,6 +1465,28 @@ export interface components {
             /** Offset */
             offset: number;
         };
+        /** Page[ExplainEventRead] */
+        Page_ExplainEventRead_: {
+            /** Items */
+            items: components["schemas"]["ExplainEventRead"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** Page[LibraryStrategyListItem] */
+        Page_LibraryStrategyListItem_: {
+            /** Items */
+            items: components["schemas"]["LibraryStrategyListItem"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** Page[StrategyRead] */
         Page_StrategyRead_: {
             /** Items */
@@ -1011,6 +1497,134 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /** ParamChoiceRead */
+        ParamChoiceRead: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+        };
+        /** ParamFindingRead */
+        ParamFindingRead: {
+            /** Param */
+            param?: string | null;
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            severity: components["schemas"]["ValidationSeverity"];
+        };
+        /**
+         * ParamGroupRead
+         * @description Parameters bundled into one editor section.
+         */
+        ParamGroupRead: {
+            /** Name */
+            name: string;
+            /** Parameters */
+            parameters: components["schemas"]["ParamSpecRead"][];
+        };
+        /**
+         * ParamSpecRead
+         * @description One parameter, with everything the generated editor needs to render it.
+         */
+        ParamSpecRead: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            type: components["schemas"]["ParamType"];
+            /** Description */
+            description: string;
+            /** Default */
+            default: boolean | number | string;
+            /** Minimum */
+            minimum?: number | null;
+            /** Maximum */
+            maximum?: number | null;
+            /** Step */
+            step?: number | null;
+            /** Choices */
+            choices?: components["schemas"]["ParamChoiceRead"][];
+            /** Group */
+            group: string;
+            /** Display Order */
+            display_order: number;
+            /**
+             * Tooltip
+             * @default
+             */
+            tooltip: string;
+            /**
+             * Unit
+             * @description Suffix shown after the input, e.g. %
+             * @default
+             */
+            unit: string;
+            /** Rules */
+            rules?: components["schemas"]["ValidationRuleRead"][];
+        };
+        /**
+         * ParamType
+         * @description Parameter types the auto-generated parameter editor knows how to render.
+         *
+         *     ``PERCENTAGE`` follows the project-wide convention (2.5 means 2.5%, not
+         *     0.025). ``TIME`` is a zero-padded 24-hour ``HH:MM`` string. ``PRICE`` is a
+         *     float in the instrument's quote currency.
+         * @enum {string}
+         */
+        ParamType: "integer" | "float" | "boolean" | "choice" | "string" | "time" | "percentage" | "price";
+        /** ParamValidateRequest */
+        ParamValidateRequest: {
+            /** Params */
+            params?: {
+                [key: string]: boolean | number | string;
+            };
+        };
+        /**
+         * ParamValidationRead
+         * @description Verdict on a candidate parameter set, plus the values that would be used.
+         */
+        ParamValidationRead: {
+            /** Strategy Id */
+            strategy_id: string;
+            /** Is Valid */
+            is_valid: boolean;
+            /** Errors */
+            errors?: components["schemas"]["ParamFindingRead"][];
+            /** Warnings */
+            warnings?: components["schemas"]["ParamFindingRead"][];
+            /**
+             * Resolved Params
+             * @description Values after coercion; rejected values fall back to their default
+             */
+            resolved_params?: {
+                [key: string]: boolean | number | string;
+            };
+        };
+        /**
+         * ParameterSetRead
+         * @description The parameter contract for one strategy, grouped for the editor.
+         */
+        ParameterSetRead: {
+            /** Strategy Id */
+            strategy_id: string;
+            /** Version */
+            version: string;
+            /** Parameters */
+            parameters: components["schemas"]["ParamSpecRead"][];
+            /** Groups */
+            groups: components["schemas"]["ParamGroupRead"][];
+            /** Defaults */
+            defaults: {
+                [key: string]: boolean | number | string;
+            };
         };
         /** PerformanceMetricsRead */
         PerformanceMetricsRead: {
@@ -1065,6 +1679,12 @@ export interface components {
          * @enum {string}
          */
         Priority: "low" | "medium" | "high";
+        /**
+         * RiskLevel
+         * @description Declared aggressiveness of a strategy, for library filtering.
+         * @enum {string}
+         */
+        RiskLevel: "low" | "medium" | "high";
         /** ScenarioRunResultRead */
         ScenarioRunResultRead: {
             /** Name */
@@ -1086,6 +1706,12 @@ export interface components {
             /** Result Hash */
             result_hash: string;
         };
+        /**
+         * StrategyCategory
+         * @description How a library strategy extracts edge. Drives Strategy Library grouping.
+         * @enum {string}
+         */
+        StrategyCategory: "trend_following" | "mean_reversion" | "breakout" | "momentum" | "volatility" | "volume";
         /** StrategyCodeRead */
         StrategyCodeRead: {
             /** Id */
@@ -1159,6 +1785,72 @@ export interface components {
             priority: components["schemas"]["Priority"];
             /** Tags */
             tags?: string | null;
+        };
+        /**
+         * StrategyDocumentationRead
+         * @description Generated documentation (Part 8), plus a markdown rendering of the same.
+         */
+        StrategyDocumentationRead: {
+            /** Strategy Id */
+            strategy_id: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+            /** Author */
+            author: string;
+            /** Overview */
+            overview: string;
+            /** Description */
+            description: string;
+            /** Category */
+            category: string;
+            /** Risk Level */
+            risk_level: string;
+            /** Markets */
+            markets: string[];
+            /** Timeframes */
+            timeframes: string[];
+            /** Tags */
+            tags: string[];
+            /** Direction */
+            direction: string;
+            /** Styles */
+            styles: string[];
+            /** Indicators */
+            indicators: string[];
+            /** Entry Rules */
+            entry_rules: string[];
+            /** Exit Rules */
+            exit_rules: string[];
+            /** Risk Rules */
+            risk_rules: string[];
+            /** Parameters */
+            parameters: components["schemas"]["DocumentedParameterRead"][];
+            /** Examples */
+            examples: components["schemas"]["DocumentedExampleRead"][];
+            /** Changelog */
+            changelog: components["schemas"]["ChangelogEntryRead"][];
+            /** Known Limitations */
+            known_limitations: string[];
+            /** References */
+            references: string[];
+            /** Markdown */
+            markdown: string;
+        };
+        /** StrategyExampleRead */
+        StrategyExampleRead: {
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Instrument */
+            instrument: string;
+            timeframe: components["schemas"]["Timeframe"];
+            /** Params */
+            params?: {
+                [key: string]: boolean | number | string;
+            };
         };
         /** StrategyRead */
         StrategyRead: {
@@ -1272,6 +1964,18 @@ export interface components {
             /** Tags */
             tags?: string | null;
         };
+        /**
+         * StrategyValidationRead
+         * @description Verdict on a strategy's own declaration.
+         */
+        StrategyValidationRead: {
+            /** Is Valid */
+            is_valid: boolean;
+            /** Errors */
+            errors?: components["schemas"]["ValidationFindingRead"][];
+            /** Warnings */
+            warnings?: components["schemas"]["ValidationFindingRead"][];
+        };
         /** StrategyValidationResult */
         StrategyValidationResult: {
             /** Valid */
@@ -1293,6 +1997,14 @@ export interface components {
          * @enum {string}
          */
         Timeframe: "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "1d" | "1w";
+        /** TradeInspectionRead */
+        TradeInspectionRead: {
+            summary: components["schemas"]["TradeSummaryRead"];
+            /** Timeline */
+            timeline: components["schemas"]["TradeTimelineStepRead"][];
+            /** Event Seqs */
+            event_seqs?: number[];
+        };
         /** TradeMarkerRead */
         TradeMarkerRead: {
             /** Ts */
@@ -1305,6 +2017,11 @@ export interface components {
             /** Marker Kind */
             marker_kind: string;
         };
+        /**
+         * TradeOutcome
+         * @enum {string}
+         */
+        TradeOutcome: "winning" | "losing" | "break_even";
         /** TradeRead */
         TradeRead: {
             /** Seq */
@@ -1331,6 +2048,76 @@ export interface components {
             /** Bars Held */
             bars_held: number;
         };
+        /** TradeSummaryRead */
+        TradeSummaryRead: {
+            /** Trade Number */
+            trade_number: number;
+            /** Direction */
+            direction: string;
+            /** Entry Time Ms */
+            entry_time_ms: number;
+            /** Exit Time Ms */
+            exit_time_ms: number;
+            /** Entry Price */
+            entry_price: number;
+            /** Exit Price */
+            exit_price: number;
+            /** Gross Profit */
+            gross_profit: number;
+            /** Net Profit */
+            net_profit: number;
+            /** Commission */
+            commission: number;
+            /** Slippage */
+            slippage: number;
+            /** Holding Period Bars */
+            holding_period_bars: number;
+            /** Mae */
+            mae?: number | null;
+            /** Mfe */
+            mfe?: number | null;
+            /** Return Pct */
+            return_pct: number;
+            /** Risk Reward */
+            risk_reward?: number | null;
+            status: components["schemas"]["TradeOutcome"];
+            /** Order Ids */
+            order_ids?: number[];
+            /** Position Id */
+            position_id?: number | null;
+            /** Event Count */
+            event_count: number;
+        };
+        /** TradeTimelineStepRead */
+        TradeTimelineStepRead: {
+            step_type: components["schemas"]["ExplainEventType"];
+            /** Label */
+            label: string;
+            /** Event Seq */
+            event_seq: number;
+            /** Timestamp Ms */
+            timestamp_ms: number;
+            /** Bar Index */
+            bar_index?: number | null;
+            /** Price */
+            price?: number | null;
+            /** Quantity */
+            quantity?: number | null;
+            /** Commission */
+            commission?: number | null;
+            /** Slippage */
+            slippage?: number | null;
+            /** Cash */
+            cash?: number | null;
+            /** Portfolio Value */
+            portfolio_value?: number | null;
+            /** Reason Code */
+            reason_code: string;
+            /** Message */
+            message: string;
+            /** Related Event Seqs */
+            related_event_seqs?: number[];
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1344,6 +2131,46 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** ValidationFindingRead */
+        ValidationFindingRead: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            severity: components["schemas"]["ValidationSeverity"];
+            /** Section */
+            section: string;
+            /** Param */
+            param?: string | null;
+        };
+        /**
+         * ValidationRuleKind
+         * @description Declarative parameter constraints beyond min/max/step.
+         *
+         *     A closed set rather than arbitrary predicates: rules must survive being
+         *     serialised to the API and rendered as help text in the parameter editor.
+         * @enum {string}
+         */
+        ValidationRuleKind: "less_than_param" | "greater_than_param" | "not_equal_param" | "multiple_of" | "min_length" | "max_length";
+        /** ValidationRuleRead */
+        ValidationRuleRead: {
+            kind: components["schemas"]["ValidationRuleKind"];
+            /** Other Param */
+            other_param?: string | null;
+            /** Value */
+            value?: number | null;
+            /**
+             * Description
+             * @description Rendered rule text for the parameter editor
+             */
+            description: string;
+        };
+        /**
+         * ValidationSeverity
+         * @description Whether a validation finding blocks execution or only warns.
+         * @enum {string}
+         */
+        ValidationSeverity: "error" | "warning";
     };
     responses: never;
     parameters: never;
@@ -1678,6 +2505,196 @@ export interface operations {
             };
         };
     };
+    list_library_strategies_api_v1_strategy_library_get: {
+        parameters: {
+            query?: {
+                /** @description Free-text search */
+                q?: string | null;
+                category?: string | null;
+                /** @description Repeatable; all must match */
+                tag?: string[] | null;
+                market?: string | null;
+                timeframe?: string | null;
+                risk_level?: string | null;
+                style?: ("intraday" | "swing" | "position") | null;
+                valid_only?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_LibraryStrategyListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_library_facets_api_v1_strategy_library_facets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryFacetsRead"];
+                };
+            };
+        };
+    };
+    get_library_strategy_api_v1_strategy_library__strategy_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                strategy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryStrategyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_library_strategy_parameters_api_v1_strategy_library__strategy_id__parameters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                strategy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParameterSetRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_library_strategy_documentation_api_v1_strategy_library__strategy_id__documentation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                strategy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyDocumentationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_library_strategy_params_api_v1_strategy_library__strategy_id__validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                strategy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParamValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParamValidationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_datasets_api_v1_datasets_get: {
         parameters: {
             query?: {
@@ -1994,6 +3011,187 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BacktestRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_events_api_v1_backtests_runs__run_id__events_get: {
+        parameters: {
+            query?: {
+                layer?: components["schemas"]["ExplainLayer"] | null;
+                event_type?: components["schemas"]["ExplainEventType"] | null;
+                trade_id?: number | null;
+                order_id?: number | null;
+                position_id?: number | null;
+                reason_code?: string | null;
+                status?: components["schemas"]["ExplainEventStatus"] | null;
+                q?: string | null;
+                timestamp_from_ms?: number | null;
+                timestamp_to_ms?: number | null;
+                bar_index?: number | null;
+                sort?: "seq" | "timestamp_ms" | "bar_index" | "event_type";
+                order?: "asc" | "desc";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ExplainEventRead_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_trade_api_v1_backtests_runs__run_id__trades__trade_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                trade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeInspectionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_trade_events_api_v1_backtests_runs__run_id__trades__trade_id__events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+                trade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ExplainEventRead_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_bar_api_v1_backtests_runs__run_id__bars__bar_index__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                bar_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BarInspectionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_bar_events_api_v1_backtests_runs__run_id__bars__bar_index__events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+                bar_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ExplainEventRead_"];
                 };
             };
             /** @description Validation Error */

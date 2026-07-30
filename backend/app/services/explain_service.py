@@ -71,9 +71,7 @@ class ExplainService:
         inspection = inspect_trade(index, trade_id)
         if inspection is None:
             raise NotFoundError(f"Trade {trade_id} not found in run '{run_id}'")
-        events = tuple(
-            index.by_seq[seq] for seq in inspection.event_seqs if seq in index.by_seq
-        )
+        events = tuple(index.by_seq[seq] for seq in inspection.event_seqs if seq in index.by_seq)
         page = events[offset : offset + limit]
         return [_event_to_read(event) for event in page], len(events)
 
@@ -114,9 +112,7 @@ class ExplainService:
                 f"bar_index must be between 0 and {snapshot.bar_count - 1} inclusive"
             )
         events = snapshot.event_index.by_bar_index.get(bar_index, ())
-        filtered = tuple(
-            event for event in events if event.layer.value != "narrative"
-        )
+        filtered = tuple(event for event in events if event.layer.value != "narrative")
         page = filtered[offset : offset + limit]
         return [_event_to_read(event) for event in page], len(filtered)
 
@@ -150,21 +146,15 @@ def _apply_filters(
     if filters.position_id is not None:
         result = tuple(event for event in result if event.position_id == filters.position_id)
     if filters.reason_code is not None:
-        result = tuple(
-            event for event in result if event.reason_code == filters.reason_code
-        )
+        result = tuple(event for event in result if event.reason_code == filters.reason_code)
     if filters.status is not None:
         result = tuple(event for event in result if event.status is filters.status)
     if filters.bar_index is not None:
         result = tuple(event for event in result if event.bar_index == filters.bar_index)
     if filters.timestamp_from_ms is not None:
-        result = tuple(
-            event for event in result if event.timestamp_ms >= filters.timestamp_from_ms
-        )
+        result = tuple(event for event in result if event.timestamp_ms >= filters.timestamp_from_ms)
     if filters.timestamp_to_ms is not None:
-        result = tuple(
-            event for event in result if event.timestamp_ms <= filters.timestamp_to_ms
-        )
+        result = tuple(event for event in result if event.timestamp_ms <= filters.timestamp_to_ms)
     if filters.q:
         needle = filters.q.lower()
         result = tuple(

@@ -1,6 +1,8 @@
+import { BookOpen, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { Breadcrumbs, type Crumb } from '@/components/common/Breadcrumbs'
 import { ErrorState } from '@/components/common/ErrorState'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +13,8 @@ import { ResearchJournal } from '@/features/backtest-runs/components/ResearchJou
 import { useBacktestRun } from '@/features/backtest-runs/queries'
 import { backtestRunToExecutionResult } from '@/features/backtest-runs/utils'
 import { ExecutionResultCard } from '@/features/backtests/components/ExecutionResultCard'
+import { workflowFromRun } from '@/features/backtests/workflow'
+import { updateWorkflow } from '@/features/backtests/workflowStore'
 import { ExplainabilityPanel } from '@/features/explain/components/ExplainabilityPanel'
 import { formatCurrency, formatDate, formatDuration } from '@/lib/format'
 import { getErrorMessage } from '@/lib/apiClient'
@@ -41,16 +45,50 @@ export default function BacktestRunDetailPage() {
   }
 
   const executionResult = backtestRunToExecutionResult(run)
+  const libraryId = run.library_strategy_id
+
+  // Reloading the exact configuration is what makes "tweak one parameter and
+  // run it again" a two-click operation rather than a re-entry exercise.
+  const rerun = () => {
+    updateWorkflow((current) => workflowFromRun(current, run))
+    navigate('/backtests')
+  }
+
+  const crumbs: Crumb[] = [
+    ...(libraryId
+      ? [
+          { label: 'Strategy Library', to: '/strategy-library' },
+          { label: run.strategy_name, to: `/strategy-library/${libraryId}` },
+        ]
+      : [{ label: 'Runs', to: '/backtests/runs' }]),
+    { label: 'Result' },
+  ]
 
   return (
     <div>
+      <Breadcrumbs items={crumbs} />
+
       <PageHeader
         title="Backtest Run"
         description={`${run.strategy_name} on ${run.dataset_name}`}
         actions={
-          <Button variant="outline" asChild>
-            <Link to="/backtests/runs">All runs</Link>
-          </Button>
+          <>
+            <Button onClick={rerun}>
+              <RefreshCw className="size-4" />
+              Run again
+            </Button>
+            {libraryId && (
+              <Button variant="outline" asChild>
+                <Link to={`/strategy-library/${libraryId}`}>
+                  <BookOpen className="size-4" />
+                  Back to library
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" asChild>
+              <Link to="/backtests/runs">All runs</Link>
+            </Button>
+          </>
         }
       />
 
@@ -62,7 +100,7 @@ export default function BacktestRunDetailPage() {
           </Badge>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-xs text-muted-foreground">Run ID</dt>
               <dd className="font-mono text-xs">{run.id}</dd>
@@ -95,7 +133,33 @@ export default function BacktestRunDetailPage() {
               <dt className="text-xs text-muted-foreground">Dataset hash</dt>
               <dd className="truncate font-mono text-xs">{run.dataset_hash}</dd>
             </div>
+            {libraryId && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Library strategy</dt>
+                <dd className="font-mono text-xs">
+                  {libraryId}@{run.library_strategy_version}
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-xs text-muted-foreground">Explainability</dt>
+              <dd>{run.explain_level}</dd>
+            </div>
           </dl>
+
+          {run.strategy_params && Object.keys(run.strategy_params).length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 text-xs text-muted-foreground">Parameters used</p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(run.strategy_params).map(([name, value]) => (
+                  <Badge key={name} variant="outline" className="font-mono text-xs">
+                    {name}={String(value)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {run.error_message && (
             <p className="mt-4 text-sm text-destructive">{run.error_message}</p>
           )}

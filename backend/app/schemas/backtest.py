@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.domain.enums import OrderStatus, OrderType, PositionSide
 from app.domain.explain import ExplainLevel
@@ -10,14 +10,53 @@ from app.schemas.explain import ExplainEventRead
 
 
 class BacktestExecuteRequest(BaseModel):
-    """Inputs for replaying a saved strategy against a saved dataset."""
+    """Inputs for replaying a strategy against a saved dataset.
 
-    strategy_id: str = Field(min_length=1)
+    ``library_strategy_id`` is additive and optional: omit it and the saved
+    strategy's own code runs, exactly as before. Supply it and the named
+    built-in strategy runs instead, configured by ``strategy_params``.
+
+    Every run is still recorded against a row in ``strategies`` - the research
+    container the run history and journal hang off. ``strategy_id`` names it
+    explicitly; omitting it for a library run lets the service resolve (and, the
+    first time, create) the container for that library strategy, so launching a
+    backtest straight from the Strategy Library does not require the trader to
+    hand-create a research record first.
+    """
+
+    strategy_id: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Research container for the run. Optional for a library strategy.",
+    )
     dataset_id: str = Field(min_length=1)
     initial_capital: float = Field(default=100_000.0, gt=0)
     commission: float = Field(default=0.0, ge=0)
     slippage: float = Field(default=0.0, ge=0)
-    explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY
+    explain_level: ExplainLevel | None = Field(
+        default=None,
+        description=(
+            "Omit to use the strategy's recommended level: FULL for a strategy that "
+            "traces its conditions, TRADES_ONLY otherwise."
+        ),
+    )
+    library_strategy_id: str | None = Field(
+        default=None,
+        description="Run this built-in strategy instead of the saved code.",
+    )
+    strategy_params: dict[str, bool | int | float | str] | None = Field(
+        default=None,
+        description="Parameter values for the library strategy; defaults fill any gaps.",
+    )
+
+    @model_validator(mode="after")
+    def _check_strategy_selection(self) -> BacktestExecuteRequest:
+        if self.strategy_id is None and self.library_strategy_id is None:
+            raise ValueError("Provide strategy_id, library_strategy_id, or both")
+        if self.strategy_params is not None and self.library_strategy_id is None:
+            # Silently ignoring them would look like the run honoured values it never saw.
+            raise ValueError("strategy_params only apply to a library strategy")
+        return self
 
 
 class OrderRead(BaseModel):

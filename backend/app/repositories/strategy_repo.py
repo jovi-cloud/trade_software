@@ -22,6 +22,15 @@ class StrategyRepository:
     def get_by_name(self, name: str) -> Strategy | None:
         return self.session.scalars(self._active().where(Strategy.name == name)).first()
 
+    def get_by_library_strategy_id(self, library_strategy_id: str) -> Strategy | None:
+        """The research container holding runs of one built-in strategy, if any."""
+        stmt = (
+            self._active()
+            .where(Strategy.library_strategy_id == library_strategy_id)
+            .order_by(Strategy.created_at.asc())
+        )
+        return self.session.scalars(stmt).first()
+
     def search(
         self,
         *,

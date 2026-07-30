@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install dev dev-backend dev-frontend test test-backend lint lint-backend \
+.PHONY: help install dev dev-backend dev-frontend test test-backend test-frontend lint lint-backend \
         lint-frontend format typecheck check migrate migration db-reset types build \
         clean backup
 
@@ -26,10 +26,13 @@ dev-frontend: ## Run the Vite dev server on http://localhost:5173
 	cd $(FRONTEND) && npm run dev
 
 # ---------------------------------------------------------------- tests ----
-test: test-backend ## Run all tests
+test: test-backend test-frontend ## Run all tests
 
 test-backend: ## Run the backend test suite
 	cd $(BACKEND) && uv run pytest
+
+test-frontend: ## Run the frontend unit tests
+	cd $(FRONTEND) && npm test
 
 test-cov: ## Run backend tests with a coverage report
 	cd $(BACKEND) && uv run pytest --cov --cov-report=term-missing

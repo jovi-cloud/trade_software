@@ -28,10 +28,7 @@ def assemble_timeline(
             run_completed = event
             continue
         ordered.append(event)
-        if (
-            event.event_type is ExplainEventType.RUN_STARTED
-            and dataset_event is not None
-        ):
+        if event.event_type is ExplainEventType.RUN_STARTED and dataset_event is not None:
             ordered.append(dataset_event)
 
     if metrics_event is not None:

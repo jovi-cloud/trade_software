@@ -58,3 +58,8 @@ class Strategy(Base, IdMixin, TimestampMixin):
     tags: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Soft delete: list/get/search exclude rows where this is set.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Set when this row exists to hold the run history of a built-in strategy
+    # rather than a hand-written idea. Deliberately not unique: a soft-deleted
+    # container must not block creating a fresh one for the same library entry.
+    library_strategy_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)

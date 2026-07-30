@@ -383,9 +383,7 @@ def _build_execution(
     orders: list[dict[str, Any]],
     bar_index: int,
 ) -> BarExecutionSummary:
-    fills = [
-        event for event in bar_events if event.event_type is ExplainEventType.ORDER_FILLED
-    ]
+    fills = [event for event in bar_events if event.event_type is ExplainEventType.ORDER_FILLED]
     if fills:
         fill = fills[-1]
         position = None
@@ -451,8 +449,7 @@ def _build_execution(
     pending_on_bar = [
         item
         for item in orders
-        if int(item.get("submitted_bar_index", -1)) == bar_index
-        and item.get("status") == "pending"
+        if int(item.get("submitted_bar_index", -1)) == bar_index and item.get("status") == "pending"
     ]
     if pending_on_bar:
         return BarExecutionSummary(

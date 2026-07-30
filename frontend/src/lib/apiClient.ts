@@ -35,10 +35,16 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
   return typeof error === 'object' && error !== null && 'code' in error && 'message' in error
 }
 
+export type QueryParamValue = string | number | boolean | undefined | null
+
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
-  /** Query string parameters; undefined and null values are dropped. */
-  params?: Record<string, string | number | boolean | undefined | null>
+  /**
+   * Query string parameters; undefined and null values are dropped. An array
+   * becomes one repeated key per element, which is how FastAPI reads a
+   * repeatable filter such as `?tag=trend&tag=intraday`.
+   */
+  params?: Record<string, QueryParamValue | QueryParamValue[]>
 }
 
 function buildUrl(path: string, params?: RequestOptions['params']): string {
@@ -47,7 +53,9 @@ function buildUrl(path: string, params?: RequestOptions['params']): string {
 
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null) search.append(key, String(value))
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined && item !== null) search.append(key, String(item))
+    }
   }
   const query = search.toString()
   return query ? `${url}?${query}` : url
