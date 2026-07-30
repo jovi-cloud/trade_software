@@ -44,6 +44,14 @@ class DataPaths:
         """Immutable parquet for one dataset version: market/{id}/v{n}.parquet."""
         return self.market / dataset_id / f"v{version_number}.parquet"
 
+    def run_artifacts(self, run_id: str) -> Path:
+        """Directory holding one run's artifacts: artifacts/{run_id}/."""
+        return self.artifacts / run_id
+
+    def run_decisions_parquet(self, run_id: str) -> Path:
+        """Per-bar decision log for one run: artifacts/{run_id}/decisions.parquet."""
+        return self.run_artifacts(run_id) / "decisions.parquet"
+
     def ensure(self) -> None:
         """Create every directory. Idempotent; called once at startup."""
         for path in (self.root, self.market, self.artifacts, self.imports, self.logs):

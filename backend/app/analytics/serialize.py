@@ -44,9 +44,7 @@ def report_from_dict(data: dict[str, Any]) -> AnalyticsReport:
             rolling_returns=tuple(
                 RollingReturnPoint(**point) for point in series["rolling_returns"]
             ),
-            monthly_returns=tuple(
-                MonthlyReturn(**point) for point in series["monthly_returns"]
-            ),
+            monthly_returns=tuple(MonthlyReturn(**point) for point in series["monthly_returns"]),
             yearly_returns=tuple(YearlyReturn(**point) for point in series["yearly_returns"]),
             max_drawdown_start_ts=series.get("max_drawdown_start_ts"),
             max_drawdown_trough_ts=series.get("max_drawdown_trough_ts"),

@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { BarInspector } from '@/features/explain/components/BarInspector'
+import { ConditionFunnel } from '@/features/explain/components/ConditionFunnel'
+import { DecisionLogTable } from '@/features/explain/components/DecisionLogTable'
 import { EventExplorer } from '@/features/explain/components/EventExplorer'
 import { TradeInspector } from '@/features/explain/components/TradeInspector'
 
@@ -19,6 +21,8 @@ interface ExplainabilityPanelProps {
   tradeCount: number
   selectedBarIndex: number | null
   onBarSelect: (barIndex: number) => void
+  /** Bars in this run's decision log. Zero means the run has none. */
+  decisionLogRows?: number
 }
 
 export function ExplainabilityPanel({
@@ -26,8 +30,10 @@ export function ExplainabilityPanel({
   tradeCount,
   selectedBarIndex,
   onBarSelect,
+  decisionLogRows = 0,
 }: ExplainabilityPanelProps) {
-  const [activeTab, setActiveTab] = useState<'events' | 'trade' | 'bar'>('bar')
+  const hasDecisionLog = decisionLogRows > 0
+  const [activeTab, setActiveTab] = useState<'events' | 'trade' | 'bar' | 'log'>('bar')
   const [selectedTradeId, setSelectedTradeId] = useState<number | null>(
     tradeCount > 0 ? 1 : null,
   )
@@ -39,6 +45,13 @@ export function ExplainabilityPanel({
       <div className="flex flex-wrap gap-2">
         <TabButton active={activeTab === 'bar'} onClick={() => setActiveTab('bar')}>
           Bar Inspector
+        </TabButton>
+        <TabButton
+          active={activeTab === 'log'}
+          onClick={() => setActiveTab('log')}
+          disabled={!hasDecisionLog}
+        >
+          Decision Log
         </TabButton>
         <TabButton active={activeTab === 'events'} onClick={() => setActiveTab('events')}>
           Event Explorer
@@ -60,6 +73,20 @@ export function ExplainabilityPanel({
             onBarSelect(barIndex)
           }}
         />
+      )}
+
+      {activeTab === 'log' && hasDecisionLog && (
+        <div className="space-y-4">
+          <ConditionFunnel runId={runId} />
+          <DecisionLogTable
+            runId={runId}
+            totalRows={decisionLogRows}
+            onSelectBar={(barIndex) => {
+              onBarSelect(barIndex)
+              setActiveTab('bar')
+            }}
+          />
+        </div>
       )}
 
       {activeTab === 'events' && (

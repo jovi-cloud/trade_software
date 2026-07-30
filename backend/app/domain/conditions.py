@@ -38,12 +38,32 @@ class ConditionTrace:
 
 
 @dataclass(frozen=True)
+class OperandTrace:
+    """One raw number behind a verdict, with its display metadata.
+
+    Kept numeric on purpose. ``ConditionTrace.actual_value`` is prose the
+    strategy author wrote ("fast 1020.2934 vs slow 1021.4290"); an operand is the
+    float itself, so the decision log can store it in a columnar float column and
+    a reader can re-derive the arithmetic instead of parsing a sentence.
+    """
+
+    name: str
+    value: float
+    label: str = ""
+    unit: str = ""
+
+
+@dataclass(frozen=True)
 class ConditionSnapshot:
     """All conditions traced on one bar."""
 
     bar_index: int
     conditions: tuple[ConditionTrace, ...]
     indicators: dict[str, float | str]
+    #: Numeric operands traced on this bar. Not included in :meth:`to_metadata`:
+    #: operands exist for the columnar decision log, and echoing them into the
+    #: per-bar JSON metadata would re-inflate exactly what that log replaced.
+    operands: tuple[OperandTrace, ...] = ()
 
     def to_metadata(self) -> dict[str, object]:
         return {

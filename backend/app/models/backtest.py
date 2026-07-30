@@ -83,6 +83,15 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     explain_events_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     explain_level: Mapped[str] = mapped_column(String(20), nullable=False, default="trades_only")
 
+    # The per-bar decision log itself is a columnar artifact at
+    # artifacts/{run_id}/decisions.parquet - located by convention, so no path is
+    # stored. These two columns are what the API needs without opening it: how
+    # many bars were logged, and the column layout plus the per-run constants
+    # (condition names, their expected-value prose, operand labels) that the
+    # rows were stripped of.
+    decision_log_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    decision_schema_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Denormalised headline analytics (ARCHITECTURE.md 3.2). Real columns so the
     # runs list can sort and filter on any of them without opening a JSON blob
     # per row. Nullable: a metric can be genuinely undefined (no losing trade

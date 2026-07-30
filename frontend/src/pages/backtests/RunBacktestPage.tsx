@@ -110,16 +110,14 @@ export default function RunBacktestPage() {
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
       {progress && (
-        <div className="mb-6">
-          <BacktestProgressBar
-            progressPct={progress.progressPct}
-            message={progress.message}
-            barsProcessed={progress.barsProcessed}
-            totalBars={progress.totalBars}
-            onCancel={isRunning ? handleCancel : undefined}
-            isCancelling={isCancelling}
-          />
-        </div>
+        <BacktestProgressBar
+          progressPct={progress.progressPct}
+          message={progress.message}
+          barsProcessed={progress.barsProcessed}
+          totalBars={progress.totalBars}
+          onCancel={isRunning ? handleCancel : undefined}
+          isCancelling={isCancelling}
+        />
       )}
 
       <RunBacktestForm

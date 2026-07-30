@@ -24,13 +24,15 @@ from app.schemas.comparison import (
 )
 from app.schemas.explain import (
     BarInspectionRead,
+    DecisionLogRead,
+    DecisionSummaryRead,
     ExplainEventFilter,
     ExplainEventRead,
     TradeInspectionRead,
 )
 from app.services.backtest_run_service import BacktestRunService
 from app.services.comparison_service import ComparisonService
-from app.services.explain_service import ExplainService
+from app.services.explain_service import MAX_DECISION_WINDOW, ExplainService
 
 router = APIRouter(prefix="/backtests/runs", tags=["backtest-runs"])
 
@@ -242,6 +244,32 @@ def list_run_trade_events(
 def get_run_bar(run_id: str, bar_index: int, db: DbSession, paths: Paths) -> BarInspectionRead:
     service = ExplainService(db, paths)
     return service.get_bar(run_id, bar_index)
+
+
+@router.get(
+    "/{run_id}/decisions",
+    response_model=DecisionLogRead,
+    summary="Read a window of the per-bar decision log",
+)
+def get_run_decisions(
+    run_id: str,
+    db: DbSession,
+    paths: Paths,
+    start: int = Query(default=0, ge=0, description="First bar index to return"),
+    count: int = Query(default=100, ge=1, le=MAX_DECISION_WINDOW),
+) -> DecisionLogRead:
+    service = ExplainService(db, paths)
+    return service.get_decisions(run_id, start=start, count=count)
+
+
+@router.get(
+    "/{run_id}/decisions/summary",
+    response_model=DecisionSummaryRead,
+    summary="Whole-run condition tallies from the decision log",
+)
+def get_run_decision_summary(run_id: str, db: DbSession, paths: Paths) -> DecisionSummaryRead:
+    service = ExplainService(db, paths)
+    return service.get_decision_summary(run_id)
 
 
 @router.get(

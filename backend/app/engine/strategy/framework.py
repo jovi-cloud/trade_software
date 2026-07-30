@@ -267,6 +267,17 @@ class StrategyBase:
         """Write a line into the run log."""
         self.ctx.log(*parts)
 
+    def operand(self, name: str, value: float | None, *, label: str = "", unit: str = "") -> None:
+        """Publish one raw number behind a decision, for the decision log.
+
+        ``None`` is skipped rather than stored as zero: "no stop distance" and "a
+        stop distance of zero" are different facts, and a reader that cannot tell
+        them apart cannot explain a sizing rule that declined to size.
+        """
+        if value is None:
+            return
+        self.ctx.trace_operand(name, float(value), label=label or name, unit=unit)
+
     @property
     def risk(self) -> RiskRules:
         return self._risk
@@ -332,6 +343,7 @@ class StrategyBase:
 
         position = self.ctx.position
         self._sync_trade(position, bar=bar, bar_index=bar_index)
+        self._trace_portfolio(position)
 
         view = MarketView(
             bar=bar,
@@ -366,12 +378,26 @@ class StrategyBase:
     def _handle_open_position(self, view: MarketView) -> None:
         trade = self._trade
         if trade is not None:
+            atr_now = None if self._atr is None else self._atr.value
+            # The protective levels a risk exit is compared against. Without them
+            # a stop-loss exit shows only that it fired, not what it fired on.
+            self.operand("risk_stop_level", trade.stop_level, label="Stop level")
+            self.operand("risk_target_level", trade.target_level, label="Target level")
+            self.operand(
+                "risk_trailing_level",
+                trade.trailing_level(self._risk, atr_now),
+                label="Trailing stop level",
+            )
+            self.operand("risk_best_price", trade.best_price, label="Best price reached")
+            self.operand("risk_entry_price", trade.entry_price, label="Entry price")
+            self.operand("risk_bars_held", float(view.bars_held), label="Bars held", unit="bars")
+            self.operand("risk_atr", atr_now, label="ATR")
             risk_exit = evaluate_risk_exit(
                 trade,
                 bar=view.bar,
                 bars_held=view.bars_held,
                 rules=self._risk,
-                atr=None if self._atr is None else self._atr.value,
+                atr=atr_now,
                 clock=self._clock,
             )
             self.check(
@@ -425,15 +451,30 @@ class StrategyBase:
         ):
             return
 
-        quantity = self._risk.resolve_quantity(
-            capital=self.ctx.cash,
-            price=view.bar.close,
+        capital = self.ctx.cash
+        price = view.bar.close
+        sizing = self._risk.resolve_quantity_detail(
+            capital=capital,
+            price=price,
             atr=None if self._atr is None else self._atr.value,
         )
+        quantity = sizing.quantity
+        # Every input to the size, so a zero is attributable rather than just
+        # observed. The floored-to-zero case in particular is invisible from the
+        # final quantity alone - it looks identical to "the rule sized nothing".
+        self.operand("size_capital", capital, label="Capital available")
+        self.operand("size_price", price, label="Price used for sizing")
+        self.operand("size_raw_quantity", sizing.raw, label="Size before rounding", unit="units")
+        self.operand("size_quantity", quantity, label="Size submitted", unit="units")
+        self.operand("size_stop_distance", sizing.stop_distance, label="Stop distance")
         if not self.check(
             "Position Size Available",
             passed=quantity > MIN_QUANTITY,
-            actual=_render(quantity),
+            actual=(
+                f"{_render(sizing.raw)} floored to 0 (whole units only)"
+                if sizing.floored_to_zero
+                else _render(quantity)
+            ),
             expected="greater than zero",
         ):
             return
@@ -459,6 +500,22 @@ class StrategyBase:
         for key, value in self._current.items():
             if value is not None:
                 self.ctx.trace_indicator(key, round(value, _TRACE_DECIMALS))
+
+    def _trace_portfolio(self, position: object | None) -> None:
+        """Portfolio state on every bar, warmup included.
+
+        Recorded before the warmup gate returns, because "the account had this
+        much cash on this bar" is a fact whether or not any rule ran.
+        """
+        self.operand("cash", self.ctx.cash, label="Cash")
+        if position is None:
+            return
+        self.operand(
+            "position_quantity",
+            float(getattr(position, "quantity", 0.0)),
+            label="Position size",
+            unit="units",
+        )
 
     def _sync_trade(self, position: object | None, *, bar: Bar, bar_index: int) -> None:
         """Keep framework risk state aligned with the engine's real position."""

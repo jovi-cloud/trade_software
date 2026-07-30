@@ -16,7 +16,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import JobCancelledError, NotFoundError, ValidationError
+from app.core.ids import new_id
 from app.core.paths import DataPaths
+from app.data.decision_store import ParquetDecisionSink
 from app.data.errors import InvalidBarsError
 from app.data.loader import bar_timestamp_at, iter_bar_rows, load_bar_frame
 from app.domain.enums import (
@@ -54,12 +56,11 @@ from app.services.strategy_library_service import StrategyLibraryService
 MAX_CONTAINER_NAME_ATTEMPTS = 20
 #: A library strategy is not tied to one instrument - the dataset decides.
 LIBRARY_CONTAINER_INSTRUMENT = "Any"
-#: Largest dataset that still gets FULL explainability *by default*.
-#:
-#: FULL records up to two events per bar, so this is set below the engine's
-#: per-bar event budget: a run that defaults to FULL is one whose decision log
-#: fits whole. Bigger datasets can still be run at FULL, but only on request.
-FULL_EXPLAIN_BAR_LIMIT = MAX_PER_BAR_EXPLAIN_EVENTS // 2
+#: Retained for the mark-to-market events that still live in the JSON timeline.
+#: It no longer bounds the *decision* log: that goes to a columnar artifact at
+#: ~31 bytes per bar, so a 194,553-bar run logs every bar in about 6 MB and there
+#: is nothing left for a bar limit to protect against.
+FULL_EXPLAIN_EVENT_BUDGET = MAX_PER_BAR_EXPLAIN_EVENTS
 
 
 @dataclass(frozen=True)
@@ -109,6 +110,10 @@ class RunPlan:
     config: ExecutionConfig
     strategy: ResolvedStrategy
     dataset_version: ResolvedDatasetVersion
+    #: Allocated here rather than at insert time so the decision log can be
+    #: streamed straight to its final artifact path during the run. The same id
+    #: is handed to ``BacktestRunService.create_from_execution``.
+    run_id: str = field(default_factory=new_id)
 
 
 class ExecutionService:
@@ -212,19 +217,16 @@ class ExecutionService:
         a run to trades-only would silently discard the Decision Inspector's
         entire input. Hand-written code keeps the long-standing default.
 
-        ``bar_count`` caps that generosity. FULL records events per *bar*, so on
-        a long intraday dataset it produces a decision log hundreds of times the
-        size of the dataset - and one the engine's own event budget would
-        truncate anyway. Nobody asking for a default wants a log that arrives
-        truncated, so past the budget the default drops to trades-only and FULL
-        becomes an explicit choice.
+        ``bar_count`` used to downgrade long runs to trades-only, because FULL
+        wrote per-bar JSON events that the engine's budget then truncated - so a
+        big dataset would have produced a decision log that arrived incomplete.
+        The decision log is now columnar and uncapped (~31 bytes per bar), so
+        length is no longer a reason to record less, and the parameter is kept
+        only so callers do not have to change.
         """
         if library_strategy_id is None:
             return ExplainLevel.TRADES_ONLY
-        recommended = self.library.get(library_strategy_id).recommended_explain_level
-        if recommended is ExplainLevel.FULL and bar_count > FULL_EXPLAIN_BAR_LIMIT:
-            return ExplainLevel.TRADES_ONLY
-        return recommended
+        return self.library.get(library_strategy_id).recommended_explain_level
 
     def resolve_container(self, *, strategy_id: str | None, library_strategy_id: str | None) -> str:
         """The ``strategies`` row this run will be recorded against.
@@ -310,7 +312,14 @@ class ExecutionService:
         on_progress: Callable[..., None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
         max_bars: int | None = None,
+        run_id: str | None = None,
     ) -> ExecutionResult:
+        """Replay one strategy against one dataset version.
+
+        ``run_id`` is the id the run will be saved under. Supplying it turns on
+        the per-bar decision log, streamed to that run's artifact directory as
+        the bar loop goes; the caller must persist the run under the same id.
+        """
         resolved = strategy or self.resolve_strategy(strategy_id=strategy_id)
         dataset = self.dataset_repo.get(dataset_id)
         if dataset is None:
@@ -357,11 +366,22 @@ class ExecutionService:
             bar_from_row(row) for row in iter_bar_rows(frame, limit=total_bars)
         )
 
+        # The decision log is what FULL now means: every indicator value,
+        # condition verdict and calculation operand, for every bar. It is written
+        # straight to the run's artifact path so nothing is held in memory and
+        # nothing needs truncating.
+        decision_sink = (
+            ParquetDecisionSink(self.paths.run_decisions_parquet(run_id))
+            if run_id is not None and config.explain_level is ExplainLevel.FULL
+            else None
+        )
+
         result = engine.run(
             bars=BarIterator.streaming(bar_stream, count=total_bars),
             strategy=resolved.provider,
             on_progress=engine_progress,
             should_cancel=should_cancel,
+            decision_sink=decision_sink,
         )
         if should_cancel is not None and should_cancel():
             raise JobCancelledError("Backtest cancelled")

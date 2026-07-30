@@ -118,6 +118,25 @@ class ExecutionContext:
             return
         self._condition_collector.trace_indicator(name, value)
 
+    def trace_operand(
+        self,
+        name: str,
+        value: float,
+        *,
+        label: str = "",
+        unit: str = "",
+    ) -> None:
+        """Publish one raw number behind a verdict, for the decision log.
+
+        Use this for the inputs to a calculation, not its conclusion: recording
+        ``size_raw_quantity = 0.201`` next to a failed "Position Size Available"
+        is what turns "the size was zero" into "20% of 1000 buys 0.201 shares at
+        995.40, and whole-unit flooring made that zero".
+        """
+        if self._condition_collector is None:
+            return
+        self._condition_collector.trace_operand(name, value, label=label, unit=unit)
+
     def advance_to(self, bar: Bar, *, bar_index: int) -> None:
         """Engine-internal: point the context at the bar about to be replayed."""
         self._current_bar = bar

@@ -596,6 +596,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/backtests/runs/{run_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a window of the per-bar decision log */
+        get: operations["get_run_decisions_api_v1_backtests_runs__run_id__decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/{run_id}/decisions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whole-run condition tallies from the decision log */
+        get: operations["get_run_decision_summary_api_v1_backtests_runs__run_id__decisions_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/backtests/runs/{run_id}/bars/{bar_index}/events": {
         parameters: {
             query?: never;
@@ -992,6 +1026,11 @@ export interface components {
             lifecycle_events?: components["schemas"]["ExplainEventRead"][];
             /** @default trades_only */
             explain_level: components["schemas"]["ExplainLevel"];
+            /**
+             * Decision Log Rows
+             * @default 0
+             */
+            decision_log_rows: number;
             status: components["schemas"]["BacktestRunStatus"];
             /** Error Message */
             error_message: string | null;
@@ -1126,6 +1165,8 @@ export interface components {
             market_state: components["schemas"]["BarMarketStateRead"];
             /** Conditions */
             conditions: components["schemas"]["ConditionTraceRead"][];
+            /** Operands */
+            operands?: components["schemas"]["OperandRead"][];
             decision: components["schemas"]["BarDecisionRead"];
             execution: components["schemas"]["BarExecutionSummaryRead"];
             /** Timeline */
@@ -1393,6 +1434,27 @@ export interface components {
             /** Strategies Differ */
             strategies_differ: boolean;
         };
+        /** ConditionDefinitionRead */
+        ConditionDefinitionRead: {
+            /** Name */
+            name: string;
+            /** Expected */
+            expected: string;
+        };
+        /**
+         * ConditionSummaryRead
+         * @description How often one condition was reached, and how often it passed.
+         */
+        ConditionSummaryRead: {
+            /** Name */
+            name: string;
+            /** Expected */
+            expected: string;
+            /** Evaluated */
+            evaluated: number;
+            /** Passed */
+            passed: number;
+        };
         /** ConditionTraceRead */
         ConditionTraceRead: {
             /** Name */
@@ -1403,6 +1465,11 @@ export interface components {
             expected_value: string;
             /** Passed */
             passed: boolean;
+            /**
+             * Evaluated
+             * @default true
+             */
+            evaluated: boolean;
         };
         /** DailyPnlPointRead */
         DailyPnlPointRead: {
@@ -1700,6 +1767,87 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * DecisionLogRead
+         * @description One window of the per-bar decision log.
+         */
+        DecisionLogRead: {
+            /** Run Id */
+            run_id: string;
+            /** Total Rows */
+            total_rows: number;
+            /** Start */
+            start: number;
+            log_schema: components["schemas"]["DecisionSchemaRead"];
+            /** Rows */
+            rows?: components["schemas"]["DecisionRowRead"][];
+        };
+        /**
+         * DecisionRowRead
+         * @description Everything calculated on one bar.
+         *
+         *     ``conditions`` is tri-state: absent means the rule was never consulted on
+         *     this bar, which is a different fact from having been consulted and failed.
+         */
+        DecisionRowRead: {
+            /** Bar Index */
+            bar_index: number;
+            /** Ts */
+            ts: number;
+            /** Open */
+            open: number;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Close */
+            close: number;
+            /** Volume */
+            volume: number;
+            /** Indicators */
+            indicators?: {
+                [key: string]: number;
+            };
+            /** Conditions */
+            conditions?: {
+                [key: string]: boolean | null;
+            };
+            /** Operands */
+            operands?: components["schemas"]["OperandRead"][];
+        };
+        /**
+         * DecisionSchemaRead
+         * @description A decision log's per-run constants, hoisted out of the rows.
+         */
+        DecisionSchemaRead: {
+            /**
+             * Version
+             * @default 1
+             */
+            version: number;
+            /** Instrument */
+            instrument?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Indicators */
+            indicators?: string[];
+            /** Conditions */
+            conditions?: components["schemas"]["ConditionDefinitionRead"][];
+            /** Operands */
+            operands?: components["schemas"]["OperandDefinitionRead"][];
+        };
+        /**
+         * DecisionSummaryRead
+         * @description Whole-run condition tallies - the "why did nothing happen" table.
+         */
+        DecisionSummaryRead: {
+            /** Run Id */
+            run_id: string;
+            /** Total Rows */
+            total_rows: number;
+            /** Conditions */
+            conditions?: components["schemas"]["ConditionSummaryRead"][];
         };
         /** DeterminismCheckRead */
         DeterminismCheckRead: {
@@ -2321,6 +2469,35 @@ export interface components {
             end_equity: number;
             /** Trading Days */
             trading_days: number;
+        };
+        /** OperandDefinitionRead */
+        OperandDefinitionRead: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+        };
+        /**
+         * OperandRead
+         * @description One raw number behind a verdict on a specific bar.
+         */
+        OperandRead: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /** Value */
+            value: number;
         };
         /** OrderRead */
         OrderRead: {
@@ -4754,6 +4931,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BarInspectionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_decisions_api_v1_backtests_runs__run_id__decisions_get: {
+        parameters: {
+            query?: {
+                /** @description First bar index to return */
+                start?: number;
+                count?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionLogRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_decision_summary_api_v1_backtests_runs__run_id__decisions_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionSummaryRead"];
                 };
             };
             /** @description Validation Error */

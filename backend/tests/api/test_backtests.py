@@ -62,13 +62,16 @@ def test_execute_replays_strategy_against_dataset(client: TestClient) -> None:
     _save_strategy_code(client, strategy_id)
     dataset_id = _import_dataset(client)
 
-    body = run_backtest(client, {
+    body = run_backtest(
+        client,
+        {
             "strategy_id": strategy_id,
             "dataset_id": dataset_id,
             "initial_capital": 100_000,
             "commission": 0.001,
             "slippage": 0.0005,
-        })
+        },
+    )
     assert body["id"] is not None
     assert body["completed"] is True
     assert body["bars_processed"] == 3

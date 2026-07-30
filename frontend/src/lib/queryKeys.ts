@@ -50,6 +50,10 @@ export const qk = {
     tradeEvents: (runId: string, tradeId: number) =>
       [...qk.explain.all, 'trade-events', runId, tradeId] as const,
     bar: (runId: string, barIndex: number) => [...qk.explain.all, 'bar', runId, barIndex] as const,
+    decisions: (runId: string, start: number, count: number) =>
+      [...qk.explain.all, 'decisions', runId, start, count] as const,
+    decisionSummary: (runId: string) =>
+      [...qk.explain.all, 'decision-summary', runId] as const,
   },
   strategyLibrary: {
     all: ['strategy-library'] as const,

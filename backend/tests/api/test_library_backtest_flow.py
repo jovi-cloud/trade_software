@@ -114,11 +114,14 @@ def test_validate_rejects_an_edit_that_breaks_a_cross_parameter_rule(client: Tes
 def test_run_from_library_needs_no_pre_existing_strategy_record(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
 
-    body = submit_backtest(client, {
+    body = submit_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
-        })
+        },
+    )
     assert body["completed"] is True
     assert body["run_id"] is not None
     assert body["bars_processed"] == 48
@@ -308,11 +311,14 @@ def test_user_code_runs_keep_the_old_default(client: TestClient) -> None:
 
 def test_saved_run_pins_the_library_strategy_and_its_parameters(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
-    body = submit_backtest(client, {
+    body = submit_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
-        })
+        },
+    )
     run_id = body["run_id"]
 
     response = client.get(f"/api/v1/backtests/runs/{run_id}")

@@ -195,6 +195,25 @@ class RMultipleDistance(LevelRule):
 
 
 @dataclass(frozen=True, slots=True)
+class QuantityResolution:
+    """A position size together with the arithmetic that produced it."""
+
+    #: Size the sizing rule asked for, before the lot-rounding policy.
+    raw: float
+    #: Size actually submitted, after flooring or 6dp rounding.
+    quantity: float
+    #: Stop distance the sizing rule was given, where it needed one.
+    stop_distance: float | None
+    #: Whether fractional sizes were permitted for this run.
+    fractional: bool
+
+    @property
+    def floored_to_zero(self) -> bool:
+        """A tradeable size was requested and the rounding policy erased it."""
+        return self.quantity <= 0.0 < self.raw
+
+
+@dataclass(frozen=True, slots=True)
 class RiskRules:
     """Everything a strategy declares about sizing and protective exits.
 
@@ -246,17 +265,39 @@ class RiskRules:
 
     def resolve_quantity(self, *, capital: float, price: float, atr: float | None) -> float:
         """Apply the sizing rule and the lot-rounding policy. Never negative."""
+        return self.resolve_quantity_detail(capital=capital, price=price, atr=atr).quantity
+
+    def resolve_quantity_detail(
+        self, *, capital: float, price: float, atr: float | None
+    ) -> QuantityResolution:
+        """Size a position and keep the arithmetic that produced it.
+
+        The intermediate values are what make a zero size explainable. A run that
+        deploys 20% of 1,000 on a 995-rupee share sizes 0.201 shares and floors
+        that to nothing; reporting only the final ``0`` leaves no way to tell
+        that apart from "no signal fired" or "the stop rule had no distance".
+        """
+        stop_distance = self.stop_distance(entry_price=price, atr=atr)
         raw = self.sizing.quantity(
             capital=capital,
             price=price,
-            stop_distance=self.stop_distance(entry_price=price, atr=atr),
+            stop_distance=stop_distance,
         )
         if not math.isfinite(raw) or raw <= 0:
-            return 0.0
-        if self.fractional_quantity:
-            # Six decimals matches the engine's quantity rounding policy.
-            return round(raw, 6)
-        return float(math.floor(raw))
+            return QuantityResolution(
+                raw=raw if math.isfinite(raw) else 0.0,
+                quantity=0.0,
+                stop_distance=stop_distance,
+                fractional=self.fractional_quantity,
+            )
+        # Six decimals matches the engine's quantity rounding policy.
+        quantity = round(raw, 6) if self.fractional_quantity else float(math.floor(raw))
+        return QuantityResolution(
+            raw=raw,
+            quantity=quantity,
+            stop_distance=stop_distance,
+            fractional=self.fractional_quantity,
+        )
 
     def describe(self) -> tuple[str, ...]:
         """Human-readable rule list for the generated documentation."""

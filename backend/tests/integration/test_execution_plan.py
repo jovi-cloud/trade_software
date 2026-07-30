@@ -91,20 +91,22 @@ def test_plan_defaults_a_library_run_to_full_explainability(
     assert plan.config.explain_level is ExplainLevel.FULL
 
 
-def test_a_large_dataset_is_not_defaulted_to_full_explainability(
+def test_a_large_dataset_still_defaults_to_full_explainability(
     db_session: Session, settings: Settings
 ) -> None:
-    """FULL records per *bar*, so defaulting to it scales with the dataset.
+    """Dataset length is no longer a reason to record less.
 
-    Left unguarded, a 194k-bar intraday dataset produced a 460 MB decision log
-    the save path could not serialise without exhausting memory - and one the
-    engine's event budget would have truncated anyway.
+    FULL used to write per-bar JSON events at ~1.6 KB each, so a 194k-bar
+    intraday dataset produced a log the save path could not serialise and the
+    engine's budget truncated anyway - hence a size guard that downgraded the
+    default. The decision log is now columnar and streamed at ~31 bytes per bar
+    (about 6 MB for that same dataset, uncapped), so the guard is gone and a long
+    run gets the same full record a short one does.
     """
     service = _service(db_session, settings)
 
     assert (
-        service.default_explain_level("rsi_mean_reversion", bar_count=194_553)
-        is ExplainLevel.TRADES_ONLY
+        service.default_explain_level("rsi_mean_reversion", bar_count=194_553) is ExplainLevel.FULL
     )
     assert service.default_explain_level("rsi_mean_reversion", bar_count=500) is ExplainLevel.FULL
 

@@ -8,6 +8,7 @@ import {
   ExecutionSummary,
 } from '@/features/explain/components/ConditionTable'
 import { MetadataPanel } from '@/features/explain/components/MetadataPanel'
+import { OperandTable } from '@/features/explain/components/OperandTable'
 import { EXPLAIN_EVENT_LABELS } from '@/features/explain/labels'
 import { useBarInspection } from '@/features/explain/queries'
 import { getErrorMessage } from '@/lib/apiClient'
@@ -131,6 +132,15 @@ function DecisionInspector({ inspection }: { inspection: NonNullable<ReturnType<
         </CardHeader>
         <CardContent>
           <ConditionTable conditions={inspection.conditions} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Calculations</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OperandTable operands={inspection.operands ?? []} />
         </CardContent>
       </Card>
 

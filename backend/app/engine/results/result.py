@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from app.domain.decisions import DecisionSchema
 from app.domain.explain import ExplainEvent, ExplainLevel
 from app.engine.execution.order import Order
 from app.engine.execution.trade import Trade
@@ -34,3 +35,8 @@ class ExecutionResult:
     exit_markers: tuple[TradeMarker, ...] = field(default_factory=tuple)
     explain_events: tuple[ExplainEvent, ...] = field(default_factory=tuple)
     explain_level: ExplainLevel = ExplainLevel.NONE
+    #: Column layout of the per-bar decision log, when one was written. The rows
+    #: themselves went to the sink as the run progressed and are not held here.
+    decision_schema: DecisionSchema | None = None
+    #: Bars written to the decision log. Uncapped.
+    decision_rows: int = 0

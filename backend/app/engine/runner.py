@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import chain
 
+from app.domain.decisions import DecisionSchema, DecisionSink
 from app.domain.explain import ExplainLevel
 from app.engine.bars import BarIterator
 from app.engine.context import ExecutionContext, LogCollector
@@ -19,6 +20,7 @@ from app.engine.execution.simulator import ExecutionSimulator, SimulatorConfig
 from app.engine.execution.trade_manager import TradeManager
 from app.engine.explain import MAX_PER_BAR_EXPLAIN_EVENTS, ExplainCollector
 from app.engine.explain.condition_collector import ConditionCollector
+from app.engine.explain.decision_log import DecisionRecorder
 from app.engine.results.result import ExecutionResult
 from app.engine.strategy.provider import SourceStrategyProvider, StrategyProvider
 
@@ -57,6 +59,7 @@ class ExecutionEngine:
         strategy: StrategyProvider | None = None,
         on_progress: Callable[[int, int], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
+        decision_sink: DecisionSink | None = None,
     ) -> ExecutionResult:
         """Replay ``bars`` through a strategy.
 
@@ -65,6 +68,13 @@ class ExecutionEngine:
         strategy, for instance. Exactly one is required. Everything after the
         strategy is obtained is identical either way: same bar loop, same fill
         timing, same portfolio, same metrics.
+
+        ``decision_sink`` receives one row per bar carrying every indicator
+        value, condition verdict and calculation operand. Rows are streamed as
+        they are produced, so the log is uncapped regardless of bar count - the
+        engine never holds it. Supplying a sink also stops per-bar conditions
+        being duplicated into the JSON explain events, which is what previously
+        forced them to be truncated past 50,000 bars.
         """
         if (strategy_source is None) == (strategy is None):
             raise EngineError("Provide exactly one of strategy_source or strategy")
@@ -96,6 +106,15 @@ class ExecutionEngine:
                 instrument=self.config.instrument,
                 timeframe=self.config.timeframe,
             )
+        recorder = (
+            DecisionRecorder(
+                decision_sink,
+                instrument=self.config.instrument,
+                timeframe=self.config.timeframe,
+            )
+            if decision_sink is not None
+            else None
+        )
         if collector is not None:
             collector.record_run_started(bar_count=total_bars)
             collector.record_parameters_applied(
@@ -125,6 +144,7 @@ class ExecutionEngine:
                 order_book=OrderBook(),
                 trade_manager=TradeManager(),
                 collector=collector,
+                recorder=recorder,
             )
 
         if collector is not None:
@@ -143,11 +163,13 @@ class ExecutionEngine:
         portfolio = PortfolioManager(self.config.initial_capital)
         order_book = OrderBook()
         trade_manager = TradeManager()
-        # Condition traces exist to fill the Decision Inspector, which only FULL
-        # feeds. Below that level, collecting them costs a snapshot per bar and
-        # nothing reads the result.
+        # Condition traces feed the Decision Inspector, via the decision log when
+        # there is one and via FULL-level explain events otherwise. With neither,
+        # collecting them costs a snapshot per bar and nothing reads the result.
         condition_collector = (
-            ConditionCollector() if collector is not None and collector.records_bar_events else None
+            ConditionCollector()
+            if recorder is not None or (collector is not None and collector.records_bar_events)
+            else None
         )
         order_service = OrderService(order_book, portfolio, warnings, collector=collector)
         simulator = ExecutionSimulator(
@@ -191,6 +213,7 @@ class ExecutionEngine:
                 order_book=order_book,
                 trade_manager=trade_manager,
                 collector=collector,
+                recorder=recorder,
             )
 
         pending = order_book.take_pending()
@@ -218,7 +241,7 @@ class ExecutionEngine:
                 )
                 completed = False
                 break
-            if collector is not None and condition_collector is not None:
+            if condition_collector is not None:
                 condition_collector.add_inferred_condition(
                     "Already In Position",
                     actual="Yes" if portfolio.has_position else "No",
@@ -233,7 +256,13 @@ class ExecutionEngine:
                     passed=pending_count == 0,
                 )
                 snapshot = condition_collector.snapshot(bar_index=index)
-                collector.record_conditions_evaluated(snapshot, timestamp_ms=bar.ts)
+                if recorder is not None:
+                    recorder.record(snapshot, bar=bar, bar_index=index)
+                # Once the decision log owns the per-bar record, echoing it into
+                # the JSON events buys nothing and costs ~1.6 KB per bar - which
+                # is what made the events need a cap in the first place.
+                elif collector is not None:
+                    collector.record_conditions_evaluated(snapshot, timestamp_ms=bar.ts)
                 condition_collector.clear()
             bars_processed += 1
             if on_progress is not None and (
@@ -271,12 +300,20 @@ class ExecutionEngine:
 
         if collector is not None:
             collector.set_clock(last_ts if total_bars else collector.clock_ms)
-            if collector.dropped_event_count:
+            if collector.dropped_event_count and recorder is None:
                 warnings.append(
                     f"Explainability log truncated: {collector.dropped_event_count:,} per-bar "
                     f"events were dropped after the first {MAX_PER_BAR_EXPLAIN_EVENTS:,}. "
                     "Trades, orders and metrics are complete; run a shorter date range for "
                     "a full bar-by-bar decision log."
+                )
+            elif collector.dropped_event_count:
+                # The decision log is complete, so this is no longer a gap in the
+                # record - only in the mark-to-market events the timeline draws.
+                warnings.append(
+                    f"{collector.dropped_event_count:,} per-bar mark-to-market events were "
+                    f"dropped after the first {MAX_PER_BAR_EXPLAIN_EVENTS:,}. The bar-by-bar "
+                    "decision log is complete and unaffected."
                 )
             collector.record_run_completed(
                 completed=completed,
@@ -294,6 +331,7 @@ class ExecutionEngine:
             order_book=order_book,
             trade_manager=trade_manager,
             collector=collector,
+            recorder=recorder,
         )
 
     def _result(
@@ -309,7 +347,16 @@ class ExecutionEngine:
         order_book: OrderBook,
         trade_manager: TradeManager,
         collector: ExplainCollector | None,
+        recorder: DecisionRecorder | None = None,
     ) -> ExecutionResult:
+        # Every return path in ``run`` funnels through here, which is what makes
+        # this the one place guaranteed to close the sink - including the early
+        # returns for a compile failure or a raising ``on_start``.
+        decision_schema: DecisionSchema | None = None
+        decision_rows = 0
+        if recorder is not None:
+            decision_rows = recorder.rows
+            decision_schema = recorder.finish()
         if logs.truncated:
             warnings = [
                 *warnings,
@@ -332,4 +379,6 @@ class ExecutionEngine:
             trade_count=trade_manager.trade_count,
             explain_events=collector.events if collector is not None else (),
             explain_level=self.config.explain_level,
+            decision_schema=decision_schema,
+            decision_rows=decision_rows,
         )

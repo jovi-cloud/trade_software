@@ -72,3 +72,21 @@ export function fetchBarEvents(
     params,
   })
 }
+
+export type DecisionLog = components['schemas']['DecisionLogRead']
+export type DecisionRow = components['schemas']['DecisionRowRead']
+export type DecisionSchema = components['schemas']['DecisionSchemaRead']
+export type DecisionSummary = components['schemas']['DecisionSummaryRead']
+export type Operand = components['schemas']['OperandRead']
+
+/** The decision log is uncapped, so it is always read a window at a time. */
+export function fetchDecisions(
+  runId: string,
+  params: { start: number; count: number },
+): Promise<DecisionLog> {
+  return api.get<DecisionLog>(`/backtests/runs/${runId}/decisions`, { params })
+}
+
+export function fetchDecisionSummary(runId: string): Promise<DecisionSummary> {
+  return api.get<DecisionSummary>(`/backtests/runs/${runId}/decisions/summary`)
+}

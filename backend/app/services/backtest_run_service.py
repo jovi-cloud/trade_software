@@ -157,8 +157,14 @@ class BacktestRunService:
         strategy_params: Mapping[str, object] | None = None,
         dataset_version: ResolvedDatasetVersion | None = None,
         analytics: AnalyticsReport | None = None,
+        run_id: str | None = None,
     ) -> BacktestRun:
         """Persist one completed replay.
+
+        ``run_id`` must be supplied whenever the execution wrote a decision log,
+        and must be the same id the log was written under - the artifact lives at
+        ``artifacts/{run_id}/decisions.parquet`` and is located by convention, not
+        by a stored path.
 
         ``strategy_snapshot`` overrides what is recorded as the code that ran.
         It is supplied for a library-strategy run, where the reproducibility
@@ -233,6 +239,7 @@ class BacktestRunService:
         error_message = "; ".join(result.errors) if result.errors else None
 
         run = BacktestRun(
+            **({} if run_id is None else {"id": run_id}),
             strategy_id=strategy_id,
             dataset_id=dataset_id,
             dataset_version_id=version.id,
@@ -273,6 +280,12 @@ class BacktestRunService:
             errors_json=_json_dumps(payload["errors"]),
             explain_events_json=_json_dumps(payload["explain_events"]),
             explain_level=str(payload["explain_level"]),
+            decision_log_rows=result.decision_rows,
+            decision_schema_json=(
+                None
+                if result.decision_schema is None
+                else _json_dumps(result.decision_schema.to_dict())
+            ),
             status=status,
             error_message=error_message,
             **_headline_columns(report),

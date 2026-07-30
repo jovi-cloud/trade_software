@@ -28,18 +28,31 @@ export function ConditionTable({ conditions }: ConditionTableProps) {
           </tr>
         </thead>
         <tbody>
-          {conditions.map((condition) => (
-            <tr key={condition.name} className="border-t border-border">
-              <td className="px-3 py-2 font-medium">{condition.name}</td>
-              <td className="px-3 py-2">{condition.actual_value}</td>
-              <td className="px-3 py-2">{condition.expected_value}</td>
-              <td className="px-3 py-2">
-                <Badge variant={condition.passed ? 'default' : 'destructive'}>
-                  {condition.passed ? 'True' : 'False'}
-                </Badge>
-              </td>
-            </tr>
-          ))}
+          {conditions.map((condition) => {
+            // A rule that was never consulted is not a failing rule. Rendering
+            // both as red is what made "why didn't my crossover fire" unanswerable
+            // on the bars where a position was already open.
+            const unevaluated = condition.evaluated === false
+            return (
+              <tr
+                key={condition.name}
+                className={`border-t border-border ${unevaluated ? 'text-muted-foreground' : ''}`}
+              >
+                <td className="px-3 py-2 font-medium">{condition.name}</td>
+                <td className="px-3 py-2">{condition.actual_value}</td>
+                <td className="px-3 py-2">{condition.expected_value}</td>
+                <td className="px-3 py-2">
+                  <Badge
+                    variant={
+                      unevaluated ? 'outline' : condition.passed ? 'default' : 'destructive'
+                    }
+                  >
+                    {unevaluated ? 'Not reached' : condition.passed ? 'True' : 'False'}
+                  </Badge>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

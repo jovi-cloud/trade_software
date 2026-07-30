@@ -106,6 +106,87 @@ class ConditionTraceRead(BaseModel):
     actual_value: str
     expected_value: str
     passed: bool
+    #: False when the rule was declared but never consulted on this bar - which
+    #: ``passed`` alone cannot express, and which is the answer to "why did my
+    #: crossover not fire" whenever a position was already open.
+    evaluated: bool = True
+
+
+class OperandRead(BaseModel):
+    """One raw number behind a verdict on a specific bar."""
+
+    name: str
+    label: str
+    unit: str = ""
+    value: float
+
+
+class ConditionDefinitionRead(BaseModel):
+    name: str
+    expected: str
+
+
+class OperandDefinitionRead(BaseModel):
+    name: str
+    label: str
+    unit: str = ""
+
+
+class DecisionSchemaRead(BaseModel):
+    """A decision log's per-run constants, hoisted out of the rows."""
+
+    version: int = Field(default=1, ge=1)
+    instrument: str | None = None
+    timeframe: str | None = None
+    indicators: list[str] = Field(default_factory=list)
+    conditions: list[ConditionDefinitionRead] = Field(default_factory=list)
+    operands: list[OperandDefinitionRead] = Field(default_factory=list)
+
+
+class DecisionRowRead(BaseModel):
+    """Everything calculated on one bar.
+
+    ``conditions`` is tri-state: absent means the rule was never consulted on
+    this bar, which is a different fact from having been consulted and failed.
+    """
+
+    bar_index: int = Field(ge=0)
+    ts: int
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    indicators: dict[str, float] = Field(default_factory=dict)
+    conditions: dict[str, bool | None] = Field(default_factory=dict)
+    operands: list[OperandRead] = Field(default_factory=list)
+
+
+class DecisionLogRead(BaseModel):
+    """One window of the per-bar decision log."""
+
+    run_id: str
+    total_rows: int = Field(ge=0)
+    start: int = Field(ge=0)
+    log_schema: DecisionSchemaRead
+    rows: list[DecisionRowRead] = Field(default_factory=list)
+
+
+class ConditionSummaryRead(BaseModel):
+    """How often one condition was reached, and how often it passed."""
+
+    name: str
+    expected: str
+    evaluated: int = Field(ge=0)
+    passed: int = Field(ge=0)
+
+
+class DecisionSummaryRead(BaseModel):
+    """Whole-run condition tallies - the "why did nothing happen" table."""
+
+    run_id: str
+    total_rows: int = Field(ge=0)
+    conditions: list[ConditionSummaryRead] = Field(default_factory=list)
 
 
 class BarCandleRead(BaseModel):
@@ -192,6 +273,9 @@ class BarInspectionRead(BaseModel):
     candle: BarCandleRead
     market_state: BarMarketStateRead
     conditions: list[ConditionTraceRead]
+    #: The arithmetic behind this bar's verdicts, from the decision log. Empty
+    #: for runs recorded before the log existed, or below FULL.
+    operands: list[OperandRead] = Field(default_factory=list)
     decision: BarDecisionRead
     execution: BarExecutionSummaryRead
     timeline: list[BarTimelineStepRead]

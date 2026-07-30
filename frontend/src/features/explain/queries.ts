@@ -5,6 +5,8 @@ import { qk } from '@/lib/queryKeys'
 
 import {
   fetchBarInspection,
+  fetchDecisionSummary,
+  fetchDecisions,
   fetchRunEvents,
   fetchTradeEvents,
   fetchTradeInspection,
@@ -12,6 +14,10 @@ import {
 import type { ExplainEventListParams } from './api'
 
 const PAGE_SIZE = 50
+
+/** Bars per decision-log request. Matches what fits on screen without scrolling
+ *  the whole 194k-bar log into memory to show fifty rows of it. */
+export const DECISION_PAGE_SIZE = 100
 
 export function useRunEvents(runId: string, filters: ExplainEventListParams) {
   return useInfiniteQuery({
@@ -69,4 +75,26 @@ export function useBarInspection(runId: string, barIndex: number | null) {
   }, [barIndex, queryClient, runId])
 
   return query
+}
+
+/** One window of the per-bar decision log. */
+export function useDecisions(runId: string, start: number, enabled = true) {
+  return useQuery({
+    queryKey: qk.explain.decisions(runId, start, DECISION_PAGE_SIZE),
+    queryFn: () => fetchDecisions(runId, { start, count: DECISION_PAGE_SIZE }),
+    enabled: enabled && runId.length > 0 && start >= 0,
+    // Runs are append-only, so a window that has been read once can never
+    // change - there is nothing to revalidate.
+    staleTime: Infinity,
+  })
+}
+
+/** Whole-run condition tallies. One aggregate over the log, not a page of it. */
+export function useDecisionSummary(runId: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.explain.decisionSummary(runId),
+    queryFn: () => fetchDecisionSummary(runId),
+    enabled: enabled && runId.length > 0,
+    staleTime: Infinity,
+  })
 }

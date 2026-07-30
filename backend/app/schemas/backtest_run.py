@@ -147,6 +147,9 @@ class BacktestRunRead(BaseModel):
     #: and 55,000 rendered rows on a single intraday run.
     lifecycle_events: list[ExplainEventRead] = Field(default_factory=list)
     explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY
+    #: Bars in this run's decision log, or 0 when it has none. Non-zero is what
+    #: tells a client the ``/decisions`` endpoints will answer for this run.
+    decision_log_rows: int = Field(default=0, ge=0)
     status: BacktestRunStatus
     error_message: str | None
     notes: str | None
@@ -295,6 +298,7 @@ def read_from_row(
             if item.get("layer") == ExplainLayer.SYSTEM.value
         ],
         explain_level=ExplainLevel(run.explain_level),
+        decision_log_rows=run.decision_log_rows or 0,
         completed=run.status == BacktestRunStatus.COMPLETED,
         status=run.status,
         error_message=run.error_message,

@@ -73,6 +73,7 @@ class BacktestJobService:
             on_progress=report_progress,
             should_cancel=should_cancel,
             max_bars=payload.max_bars,
+            run_id=plan.run_id,
         )
         check_cancelled()
         report_progress(
@@ -102,6 +103,8 @@ class BacktestJobService:
             strategy_params=plan.strategy.params or None,
             dataset_version=plan.dataset_version,
             analytics=report,
+            # Must match the id the decision log was streamed under.
+            run_id=plan.run_id,
         )
         # A receipt, not the replay. The full result is on the run, which the
         # caller reads once by id - rather than through every progress poll.

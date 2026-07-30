@@ -174,7 +174,15 @@ export default function BacktestRunDetailPage() {
             )}
             <div>
               <dt className="text-xs text-muted-foreground">Explainability</dt>
-              <dd>{run.explain_level}</dd>
+              <dd>
+                {run.explain_level}
+                {run.decision_log_rows > 0 && (
+                  <span className="text-muted-foreground">
+                    {' '}
+                    · {run.decision_log_rows.toLocaleString()} bars logged
+                  </span>
+                )}
+              </dd>
             </div>
           </dl>
 
@@ -210,6 +218,7 @@ export default function BacktestRunDetailPage() {
             tradeCount={run.trade_count}
             selectedBarIndex={selectedBarIndex}
             onBarSelect={setSelectedBarIndex}
+            decisionLogRows={run.decision_log_rows}
           />
         </div>
       )}

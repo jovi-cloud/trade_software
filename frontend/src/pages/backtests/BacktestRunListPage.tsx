@@ -209,26 +209,26 @@ export default function BacktestRunListPage() {
 
       {!isLoading && !isError && data && data.items.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="-mx-6 w-[calc(100%+3rem)] rounded-none border border-x-0 border-border sm:rounded-md sm:border-x">
+            <table className="w-full table-fixed text-left text-sm">
               <thead className="bg-muted/40 text-xs text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 font-medium">
+                  <th className="w-10 px-3 py-2 font-medium">
                     <span className="sr-only">Select</span>
                   </th>
-                  <th className="px-3 py-2 font-medium">Run ID</th>
-                  <th className="px-3 py-2 font-medium">Experiment</th>
-                  <th className="px-3 py-2 font-medium">Strategy</th>
-                  <th className="px-3 py-2 font-medium">Dataset</th>
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium">Profit</th>
-                  <th className="px-3 py-2 font-medium">Return</th>
-                  <th className="px-3 py-2 font-medium">Sharpe</th>
-                  <th className="px-3 py-2 font-medium">Max DD</th>
-                  <th className="px-3 py-2 font-medium">Win Rate</th>
-                  <th className="px-3 py-2 font-medium">Trades</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Actions</th>
+                  <th className="w-[7%] px-3 py-2 font-medium">Run ID</th>
+                  <th className="w-[14%] px-3 py-2 font-medium">Experiment</th>
+                  <th className="w-[12%] px-3 py-2 font-medium">Strategy</th>
+                  <th className="w-[12%] px-3 py-2 font-medium">Dataset</th>
+                  <th className="w-[9%] px-3 py-2 font-medium">Date</th>
+                  <th className="w-[8%] px-3 py-2 font-medium">Profit</th>
+                  <th className="w-[7%] px-3 py-2 font-medium">Return</th>
+                  <th className="w-[6%] px-3 py-2 font-medium">Sharpe</th>
+                  <th className="w-[7%] px-3 py-2 font-medium">Max DD</th>
+                  <th className="w-[7%] px-3 py-2 font-medium">Win Rate</th>
+                  <th className="w-[5%] px-3 py-2 font-medium">Trades</th>
+                  <th className="w-[7%] px-3 py-2 font-medium">Status</th>
+                  <th className="w-[10%] px-3 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -250,49 +250,61 @@ export default function BacktestRunListPage() {
                         }}
                       />
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs">{run.id}</td>
-                    <td className="px-3 py-2">
-                      <div className="space-y-1">
-                        <p>{run.experiment_name ?? '—'}</p>
-                        <p className="text-xs text-muted-foreground">
+                    <td className="max-w-0 truncate px-3 py-2 font-mono text-xs" title={run.id}>
+                      {run.id.slice(-8)}
+                    </td>
+                    <td className="max-w-0 px-3 py-2">
+                      <div className="min-w-0 space-y-1">
+                        <p className="truncate" title={run.experiment_name ?? undefined}>
+                          {run.experiment_name ?? '—'}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
                           Research {run.research_completion_pct}%
                         </p>
                       </div>
                     </td>
-                    <td className="px-3 py-2">{run.strategy_name}</td>
-                    <td className="px-3 py-2">{run.dataset_name}</td>
-                    <td className="px-3 py-2">{formatDate(run.execution_completed_at)}</td>
+                    <td className="max-w-0 truncate px-3 py-2" title={run.strategy_name}>
+                      {run.strategy_name}
+                    </td>
+                    <td className="max-w-0 truncate px-3 py-2" title={run.dataset_name}>
+                      {run.dataset_name}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      {formatDate(run.execution_completed_at)}
+                    </td>
                     <td
-                      className={`px-3 py-2 font-medium ${
+                      className={`whitespace-nowrap px-3 py-2 font-medium ${
                         run.net_profit >= 0 ? 'text-emerald-600' : 'text-red-600'
                       }`}
                     >
                       {formatCurrency(run.net_profit)}
                     </td>
-                    <td className="px-3 py-2 tabular-nums">
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums">
                       {run.total_return_pct !== null && run.total_return_pct !== undefined
                         ? formatPercent(run.total_return_pct)
                         : '—'}
                     </td>
-                    <td className="px-3 py-2 tabular-nums">
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums">
                       {run.sharpe !== null && run.sharpe !== undefined
                         ? run.sharpe.toFixed(2)
                         : '—'}
                     </td>
-                    <td className="px-3 py-2 tabular-nums">
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums">
                       {run.max_drawdown_pct !== null && run.max_drawdown_pct !== undefined
                         ? formatPercent(run.max_drawdown_pct)
                         : '—'}
                     </td>
-                    <td className="px-3 py-2">{formatPercent(run.win_rate_pct)}</td>
-                    <td className="px-3 py-2">{run.trade_count}</td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      {formatPercent(run.win_rate_pct)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">{run.trade_count}</td>
                     <td className="px-3 py-2">
                       <Badge variant={run.status === 'completed' ? 'default' : 'destructive'}>
                         {run.status}
                       </Badge>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1">
                         <Button asChild variant="outline" size="sm">
                           <Link to={`/backtests/runs/${run.id}`}>View</Link>
                         </Button>
