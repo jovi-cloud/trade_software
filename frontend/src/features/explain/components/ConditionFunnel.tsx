@@ -28,9 +28,8 @@ export function ConditionFunnel({ runId }: ConditionFunnelProps) {
     )
   }
 
-  const blockers = data.conditions.filter(
-    (item) => item.evaluated > 0 && item.passed === 0,
-  )
+  const conditions = data.conditions ?? []
+  const blockers = conditions.filter((item) => item.evaluated > 0 && item.passed === 0)
 
   return (
     <Card>
@@ -68,7 +67,7 @@ export function ConditionFunnel({ runId }: ConditionFunnelProps) {
               </tr>
             </thead>
             <tbody>
-              {data.conditions.map((item) => {
+              {conditions.map((item) => {
                 const rate = item.evaluated === 0 ? null : item.passed / item.evaluated
                 const dead = item.evaluated > 0 && item.passed === 0
                 return (

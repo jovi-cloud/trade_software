@@ -38,7 +38,8 @@ export function DecisionLogTable({ runId, totalRows, onSelectBar }: DecisionLogT
   }
 
   const schema = data.log_schema
-  const rows = onlyDecisions ? data.rows.filter((row) => hasVerdict(row)) : data.rows
+  const allRows = data.rows ?? []
+  const rows = onlyDecisions ? allRows.filter((row) => hasVerdict(row)) : allRows
   const last = Math.max(0, totalRows - DECISION_PAGE_SIZE)
   const windowEnd = Math.min(start + DECISION_PAGE_SIZE, totalRows)
 
