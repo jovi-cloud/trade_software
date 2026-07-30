@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
@@ -34,6 +34,12 @@ const SORT_OPTIONS: { value: `${BacktestRunSortField}:${'asc' | 'desc'}`; label:
   { value: 'execution_completed_at:asc', label: 'Oldest' },
   { value: 'net_profit:desc', label: 'Profit (high to low)' },
   { value: 'net_profit:asc', label: 'Profit (low to high)' },
+  { value: 'total_return_pct:desc', label: 'Return % (high to low)' },
+  { value: 'cagr_pct:desc', label: 'CAGR (high to low)' },
+  { value: 'sharpe:desc', label: 'Sharpe (high to low)' },
+  { value: 'max_drawdown_pct:asc', label: 'Drawdown (low to high)' },
+  { value: 'profit_factor:desc', label: 'Profit factor (high to low)' },
+  { value: 'win_rate_pct:desc', label: 'Win rate (high to low)' },
   { value: 'trade_count:desc', label: 'Trade count (high to low)' },
   { value: 'trade_count:asc', label: 'Trade count (low to high)' },
 ]
@@ -43,6 +49,7 @@ type SortValue = (typeof SORT_OPTIONS)[number]['value']
 const SKELETON_KEYS = ['sk-1', 'sk-2', 'sk-3', 'sk-4', 'sk-5']
 
 export default function BacktestRunListPage() {
+  const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<BacktestRunStatus | 'all'>('all')
@@ -51,6 +58,7 @@ export default function BacktestRunListPage() {
   const [sortValue, setSortValue] = useState<SortValue>('execution_completed_at:desc')
   const [offset, setOffset] = useState(0)
   const [pendingDelete, setPendingDelete] = useState<BacktestRunListItem | null>(null)
+  const [selectedRunIds, setSelectedRunIds] = useState<string[]>([])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -155,6 +163,14 @@ export default function BacktestRunListPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          type="button"
+          disabled={selectedRunIds.length < 2}
+          onClick={() => navigate(`/backtests/compare?runs=${selectedRunIds.join(',')}`)}
+        >
+          Compare ({selectedRunIds.length})
+        </Button>
       </div>
 
       {isLoading && (
@@ -197,12 +213,18 @@ export default function BacktestRunListPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/40 text-xs text-muted-foreground">
                 <tr>
+                  <th className="px-3 py-2 font-medium">
+                    <span className="sr-only">Select</span>
+                  </th>
                   <th className="px-3 py-2 font-medium">Run ID</th>
                   <th className="px-3 py-2 font-medium">Experiment</th>
                   <th className="px-3 py-2 font-medium">Strategy</th>
                   <th className="px-3 py-2 font-medium">Dataset</th>
                   <th className="px-3 py-2 font-medium">Date</th>
                   <th className="px-3 py-2 font-medium">Profit</th>
+                  <th className="px-3 py-2 font-medium">Return</th>
+                  <th className="px-3 py-2 font-medium">Sharpe</th>
+                  <th className="px-3 py-2 font-medium">Max DD</th>
                   <th className="px-3 py-2 font-medium">Win Rate</th>
                   <th className="px-3 py-2 font-medium">Trades</th>
                   <th className="px-3 py-2 font-medium">Status</th>
@@ -212,6 +234,22 @@ export default function BacktestRunListPage() {
               <tbody>
                 {data.items.map((run) => (
                   <tr key={run.id} className="border-t border-border">
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedRunIds.includes(run.id)}
+                        aria-label={`Select run ${run.id}`}
+                        onChange={(event) => {
+                          setSelectedRunIds((current) => {
+                            if (event.target.checked) {
+                              if (current.length >= 10) return current
+                              return [...current, run.id]
+                            }
+                            return current.filter((id) => id !== run.id)
+                          })
+                        }}
+                      />
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs">{run.id}</td>
                     <td className="px-3 py-2">
                       <div className="space-y-1">
@@ -230,6 +268,21 @@ export default function BacktestRunListPage() {
                       }`}
                     >
                       {formatCurrency(run.net_profit)}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {run.total_return_pct !== null && run.total_return_pct !== undefined
+                        ? formatPercent(run.total_return_pct)
+                        : '—'}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {run.sharpe !== null && run.sharpe !== undefined
+                        ? run.sharpe.toFixed(2)
+                        : '—'}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {run.max_drawdown_pct !== null && run.max_drawdown_pct !== undefined
+                        ? formatPercent(run.max_drawdown_pct)
+                        : '—'}
                     </td>
                     <td className="px-3 py-2">{formatPercent(run.win_rate_pct)}</td>
                     <td className="px-3 py-2">{run.trade_count}</td>

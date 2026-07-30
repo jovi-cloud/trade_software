@@ -8,9 +8,10 @@ import {
 } from '@/features/explain/labels'
 import { formatCurrency, formatDuration, formatInteger, formatTimestamp } from '@/lib/format'
 
+import { AnalyticsReportPanel } from '@/features/analytics/components/AnalyticsReportPanel'
+
 import type { ExecutionResult } from '../types'
 import { BacktestChartTabs } from './BacktestChartTabs'
-import { PerformanceSummary } from './PerformanceSummary'
 
 interface ExecutionResultCardProps {
   result: ExecutionResult
@@ -62,7 +63,7 @@ export function ExecutionResultCard({
 
       <ExecutionTimeline events={result.explain_events ?? []} />
 
-      <PerformanceSummary metrics={result.metrics} />
+      {result.analytics && <AnalyticsReportPanel analytics={result.analytics} />}
 
       <BacktestChartTabs
         result={result}

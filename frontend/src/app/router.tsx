@@ -22,6 +22,7 @@ const DatasetDetailPage = lazy(() => import('@/pages/data/DatasetDetailPage'))
 const RunBacktestPage = lazy(() => import('@/pages/backtests/RunBacktestPage'))
 const BacktestRunListPage = lazy(() => import('@/pages/backtests/BacktestRunListPage'))
 const BacktestRunDetailPage = lazy(() => import('@/pages/backtests/BacktestRunDetailPage'))
+const CompareRunsPage = lazy(() => import('@/pages/backtests/CompareRunsPage'))
 
 function PageFallback() {
   return <div className="p-6 text-sm text-muted-foreground">Loading…</div>
@@ -133,6 +134,14 @@ const routes: RouteObject[] = [
         element: (
           <Suspense fallback={<PageFallback />}>
             <BacktestRunDetailPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'backtests/compare',
+        element: (
+          <Suspense fallback={<PageFallback />}>
+            <CompareRunsPage />
           </Suspense>
         ),
       },

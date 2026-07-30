@@ -9,8 +9,9 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.domain.enums import BacktestRunStatus
-from app.domain.explain import ExplainLevel
+from app.domain.explain import ExplainLayer, ExplainLevel
 from app.engine.explain.serialize import event_from_dict
+from app.schemas.analytics import AnalyticsReportRead
 from app.schemas.backtest import (
     CandleRead,
     EquityPointRead,
@@ -77,6 +78,18 @@ class BacktestRunListItem(BaseModel):
     net_profit: float
     win_rate_pct: float
     trade_count: int = Field(ge=0)
+    # Denormalised analytics headlines, so the runs list can sort on any of them.
+    # Null for a run recorded before analytics existed, until its detail page is
+    # opened once and the report is rebuilt from its snapshot.
+    total_return_pct: float | None = None
+    cagr_pct: float | None = None
+    max_drawdown_pct: float | None = None
+    sharpe: float | None = None
+    sortino: float | None = None
+    calmar: float | None = None
+    profit_factor: float | None = None
+    expectancy: float | None = None
+    exposure_pct: float | None = None
     status: BacktestRunStatus
     experiment_name: str | None
     research_completion_pct: int = Field(ge=0, le=100)
@@ -116,6 +129,7 @@ class BacktestRunRead(BaseModel):
     final_cash: float
     position_closed: bool
     metrics: PerformanceMetricsRead
+    analytics: AnalyticsReportRead
     equity_history: list[EquityPointRead]
     entry_markers: list[TradeMarkerRead]
     exit_markers: list[TradeMarkerRead]
@@ -126,7 +140,12 @@ class BacktestRunRead(BaseModel):
     warnings: list[str]
     errors: list[str]
     completed: bool
-    explain_events: list[ExplainEventRead] = Field(default_factory=list)
+    #: The run's lifecycle only - loaded, started, finished - which is bounded
+    #: at a handful of events however long the dataset is. The per-bar and
+    #: per-trade log scales with the dataset and is served, filtered and paged,
+    #: by ``GET /backtests/runs/{run_id}/events``; inlining it here cost 28 MB
+    #: and 55,000 rendered rows on a single intraday run.
+    lifecycle_events: list[ExplainEventRead] = Field(default_factory=list)
     explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY
     status: BacktestRunStatus
     error_message: str | None
@@ -184,8 +203,17 @@ def list_item_from_row(run: Any, strategy_name: str, dataset_name: str) -> Backt
         dataset_quality_score=run.dataset_quality_score,
         execution_completed_at=run.execution_completed_at,
         net_profit=metrics.net_profit,
-        win_rate_pct=metrics.win_rate_pct,
+        win_rate_pct=run.win_rate_pct if run.win_rate_pct is not None else metrics.win_rate_pct,
         trade_count=run.trade_count,
+        total_return_pct=run.total_return_pct,
+        cagr_pct=run.cagr_pct,
+        max_drawdown_pct=run.max_drawdown_pct,
+        sharpe=run.sharpe,
+        sortino=run.sortino,
+        calmar=run.calmar,
+        profit_factor=run.profit_factor,
+        expectancy=run.expectancy,
+        exposure_pct=run.exposure_pct,
         status=run.status,
         experiment_name=run.experiment_name,
         research_completion_pct=research_completion_pct(run),
@@ -193,7 +221,19 @@ def list_item_from_row(run: Any, strategy_name: str, dataset_name: str) -> Backt
     )
 
 
-def read_from_row(run: Any, strategy_name: str, dataset_name: str) -> BacktestRunRead:
+def read_from_row(
+    run: Any,
+    strategy_name: str,
+    dataset_name: str,
+    *,
+    analytics: AnalyticsReportRead,
+) -> BacktestRunRead:
+    """Map a run row plus its analytics report into the detail response.
+
+    ``analytics`` is supplied by the service rather than derived here: a run
+    saved before analytics existed needs its report rebuilt from the snapshot,
+    which is a service concern, and these mapping functions stay pure.
+    """
     import json
 
     metrics = metrics_from_json(run.metrics_json)
@@ -239,6 +279,7 @@ def read_from_row(run: Any, strategy_name: str, dataset_name: str) -> BacktestRu
         final_cash=run.final_cash,
         position_closed=run.position_closed,
         metrics=metrics,
+        analytics=analytics,
         equity_history=equity_history,
         entry_markers=entry_markers,
         exit_markers=exit_markers,
@@ -248,9 +289,10 @@ def read_from_row(run: Any, strategy_name: str, dataset_name: str) -> BacktestRu
         strategy_logs=json.loads(run.strategy_logs_json),
         warnings=json.loads(run.warnings_json),
         errors=json.loads(run.errors_json),
-        explain_events=[
+        lifecycle_events=[
             ExplainEventRead.model_validate(asdict(event_from_dict(item)))
             for item in json.loads(run.explain_events_json)
+            if item.get("layer") == ExplainLayer.SYSTEM.value
         ],
         explain_level=ExplainLevel(run.explain_level),
         completed=run.status == BacktestRunStatus.COMPLETED,

@@ -124,22 +124,31 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
         </div>
 
         {gaps && (
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-muted-foreground">Missing bars</p>
-              <p className="tabular mt-1 text-sm">{formatInteger(gaps.missing_bars)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Gap %</p>
-              <p className="tabular mt-1 text-sm">{formatPercent(gaps.gap_percentage)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Detected timeframe</p>
-              <p className="tabular mt-1 text-sm">
-                {(dataset as Dataset & { detected_timeframe?: string | null }).detected_timeframe ??
-                  pipeline?.timeframe?.detected ??
-                  dataset.timeframe}
-              </p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              <strong className="font-medium text-foreground">Missing bars</strong> counts timestamps
+              where the gap between consecutive bars is longer than one bar interval (e.g. 5
+              minutes). Overnight closes, weekends, and holidays are included in this total for
+              intraday data — so a jump like Friday 15:25 → Monday 09:15 is expected, not a CSV
+              error. Worry about gaps that fall inside a trading session.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Missing bars</p>
+                <p className="tabular mt-1 text-sm">{formatInteger(gaps.missing_bars)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Gap %</p>
+                <p className="tabular mt-1 text-sm">{formatPercent(gaps.gap_percentage)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Detected timeframe</p>
+                <p className="tabular mt-1 text-sm">
+                  {(dataset as Dataset & { detected_timeframe?: string | null }).detected_timeframe ??
+                    pipeline?.timeframe?.detected ??
+                    dataset.timeframe}
+                </p>
+              </div>
             </div>
           </div>
         )}

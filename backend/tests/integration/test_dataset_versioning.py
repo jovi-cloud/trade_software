@@ -13,6 +13,7 @@ from app.data.fingerprint import compute_dataset_fingerprint
 from app.domain.enums import Timeframe
 from app.repositories.dataset_version_repo import DatasetVersionRepository
 from app.services.import_service import ImportService
+from tests.helpers.backtests import submit_backtest
 
 VALID_CSV = (
     b"timestamp,open,high,low,close,volume\n"
@@ -114,16 +115,16 @@ def test_backtest_run_records_dataset_lineage(client: TestClient) -> None:
     strategy_id = _create_strategy(client)
     _save_strategy_code(client, strategy_id)
 
-    run = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    run = submit_backtest(
+        client,
+        {
             "strategy_id": strategy_id,
             "dataset_id": dataset_id,
             "initial_capital": 100000,
             "commission": 0,
             "slippage": 0,
         },
-    ).json()
+    )
 
     detail = client.get(f"/api/v1/backtests/runs/{run['run_id']}").json()
     assert detail["dataset_version_id"]
@@ -134,16 +135,16 @@ def test_backtest_run_records_dataset_lineage(client: TestClient) -> None:
     assert detail["dataset_hash"]
 
     client.post(f"/api/v1/datasets/{dataset_id}/validate")
-    second_run = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    second_run = submit_backtest(
+        client,
+        {
             "strategy_id": strategy_id,
             "dataset_id": dataset_id,
             "initial_capital": 100000,
             "commission": 0,
             "slippage": 0,
         },
-    ).json()
+    )
     second_detail = client.get(f"/api/v1/backtests/runs/{second_run['run_id']}").json()
     assert second_detail["dataset_version_number"] == 2
     assert detail["dataset_version_number"] == 1

@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -19,6 +20,8 @@ interface ExecutionSettingsProps {
   /** Whether the selected strategy traces conditions, for the downgrade warning. */
   supportsConditionTracing: boolean | undefined
   isRecommendedLevel: boolean
+  /** Total bars in the selected dataset, when known. */
+  datasetBarCount?: number
   onChange: (patch: Partial<WorkflowState>) => void
 }
 
@@ -33,6 +36,7 @@ export function ExecutionSettings({
   explainLevel,
   supportsConditionTracing,
   isRecommendedLevel,
+  datasetBarCount,
   onChange,
 }: ExecutionSettingsProps) {
   const warning = explainabilityWarning(explainLevel, supportsConditionTracing)
@@ -73,6 +77,41 @@ export function ExecutionSettings({
             onChange={(event) => onChange({ slippage: event.target.value })}
           />
         </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border border-border p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Quick test on a subset</p>
+            <p className="text-xs text-muted-foreground">
+              Replay only the first N bars to validate logic before running the full dataset.
+              {datasetBarCount !== undefined && datasetBarCount > 0
+                ? ` This dataset has ${datasetBarCount.toLocaleString()} bars.`
+                : ''}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant={state.limitBars ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChange({ limitBars: !state.limitBars })}
+          >
+            {state.limitBars ? 'Limited' : 'Full dataset'}
+          </Button>
+        </div>
+        {state.limitBars && (
+          <div className="space-y-2 sm:max-w-xs">
+            <Label htmlFor="max-bars">Bars to replay</Label>
+            <Input
+              id="max-bars"
+              type="number"
+              min="1"
+              step="1"
+              value={state.maxBars}
+              onChange={(event) => onChange({ maxBars: event.target.value })}
+            />
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

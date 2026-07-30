@@ -21,6 +21,16 @@ export type BacktestRunSortField =
   | 'execution_completed_at'
   | 'net_profit'
   | 'trade_count'
+  | 'total_return_pct'
+  | 'cagr_pct'
+  | 'max_drawdown_pct'
+  | 'sharpe'
+  | 'sortino'
+  | 'calmar'
+  | 'profit_factor'
+  | 'win_rate_pct'
+  | 'expectancy'
+  | 'exposure_pct'
 
 export type BacktestRunListParams = {
   q?: string

@@ -6,18 +6,21 @@ from the same trade records the metrics engine already consumed.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
 from app.domain.enums import PositionSide
-from app.engine.bars import bar_from_row
+from app.engine.bars import Bar, bar_from_row
 from app.engine.execution.trade import Trade
 
 MarkerKind = Literal["entry", "exit"]
 
 
-@dataclass(frozen=True)
+#: ``slots`` on both series below: there is one candle per bar, so this is the
+#: longest-lived per-bar structure in a run. Slots drop the per-instance dict and
+#: roughly halve it.
+@dataclass(frozen=True, slots=True)
 class Candle:
     """One OHLCV bar for the price chart."""
 
@@ -29,7 +32,7 @@ class Candle:
     volume: float
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TradeMarker:
     """Entry or exit marker anchored to one trade."""
 
@@ -38,6 +41,41 @@ class TradeMarker:
     trade_seq: int
     side: PositionSide
     marker_kind: MarkerKind
+
+
+class CandleCollector:
+    """Builds the candle series from bars as they stream past.
+
+    The chart needs one candle per bar, so this series is as long as the replay
+    however it is built. What it does *not* need is a second and third full copy
+    of the bars to build it from: tapping the replay stream leaves exactly one
+    materialised per-bar series alive instead of three.
+
+    Only bars actually replayed are collected, so a run that stopped early
+    carries candles for what it did rather than for what it was given.
+    """
+
+    def __init__(self) -> None:
+        self._candles: list[Candle] = []
+
+    def tap(self, bars: Iterable[Bar]) -> Iterator[Bar]:
+        """Pass ``bars`` through untouched, recording a candle for each."""
+        for bar in bars:
+            self._candles.append(
+                Candle(
+                    ts=bar.ts,
+                    open=bar.open,
+                    high=bar.high,
+                    low=bar.low,
+                    close=bar.close,
+                    volume=bar.volume,
+                )
+            )
+            yield bar
+
+    @property
+    def candles(self) -> tuple[Candle, ...]:
+        return tuple(self._candles)
 
 
 class ChartDataBuilder:
@@ -51,6 +89,12 @@ class ChartDataBuilder:
         candles = self._candles(bar_rows)
         entry_markers, exit_markers = self._markers(trades)
         return candles, entry_markers, exit_markers
+
+    def markers(
+        self, trades: Sequence[Trade]
+    ) -> tuple[tuple[TradeMarker, ...], tuple[TradeMarker, ...]]:
+        """Entry and exit markers alone, for a run whose candles were streamed."""
+        return self._markers(trades)
 
     def _candles(self, bar_rows: Sequence[Mapping[str, object]]) -> tuple[Candle, ...]:
         candles: list[Candle] = []
@@ -95,4 +139,4 @@ class ChartDataBuilder:
         return tuple(entries), tuple(exits)
 
 
-__all__ = ["Candle", "ChartDataBuilder", "MarkerKind", "TradeMarker"]
+__all__ = ["Candle", "CandleCollector", "ChartDataBuilder", "MarkerKind", "TradeMarker"]

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from tests.helpers.backtests import run_backtest
+
 STRATEGY_PAYLOAD = {
     "name": "Opening Range Breakout",
     "description": "Buys the breakout of the first 15-minute range.",
@@ -60,20 +62,14 @@ def test_execute_replays_strategy_against_dataset(client: TestClient) -> None:
     _save_strategy_code(client, strategy_id)
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = run_backtest(client, {
             "strategy_id": strategy_id,
             "dataset_id": dataset_id,
             "initial_capital": 100_000,
             "commission": 0.001,
             "slippage": 0.0005,
-        },
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["run_id"] is not None
+        })
+    assert body["id"] is not None
     assert body["completed"] is True
     assert body["bars_processed"] == 3
     assert body["errors"] == []
@@ -142,13 +138,7 @@ class Strategy:
     _save_strategy_code(client, strategy_id, code)
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={"strategy_id": strategy_id, "dataset_id": dataset_id},
-    )
-
-    assert response.status_code == 200
-    body = response.json()
+    body = run_backtest(client, {"strategy_id": strategy_id, "dataset_id": dataset_id})
     assert body["trade_count"] == 1
     assert len(body["entry_markers"]) == 1
     assert len(body["exit_markers"]) == 1

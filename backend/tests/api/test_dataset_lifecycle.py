@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from tests.api.test_backtests import _create_strategy, _import_dataset, _save_strategy_code
+from tests.helpers.backtests import submit_backtest
 
 VALID_CSV = (
     b"timestamp,open,high,low,close,volume\n"
@@ -30,10 +31,7 @@ def _execute(
     }
     if dataset_version is not None:
         payload["dataset_version"] = dataset_version
-    response = client.post("/api/v1/backtests/execute", json=payload)
-    assert response.status_code == 200
-    body: dict[str, object] = response.json()
-    return body
+    return submit_backtest(client, payload)
 
 
 def test_execute_defaults_to_latest_dataset_version(client: TestClient) -> None:

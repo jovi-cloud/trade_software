@@ -14,7 +14,8 @@ from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.paths import get_data_paths
-from app.db.session import dispose_engine
+from app.db.session import dispose_engine, get_session_factory
+from app.jobs.runner import ThreadPoolJobRunner
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +23,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
+    app.state.job_runner = ThreadPoolJobRunner(settings, session_factory=get_session_factory())
     logger.info(
         "Starting %s", settings.app_name, extra={"env": settings.env, "port": settings.port}
     )
     yield
+    app.state.job_runner.shutdown()
     dispose_engine()
     logger.info("Shutdown complete")
 

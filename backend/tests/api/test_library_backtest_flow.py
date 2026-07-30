@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from tests.helpers.backtests import run_backtest, run_events, submit_backtest
+
 LIBRARY_STRATEGY_ID = "ema_crossover"
 
 #: Fast/slow crossover parameters small enough to signal inside a short fixture,
@@ -112,17 +114,11 @@ def test_validate_rejects_an_edit_that_breaks_a_cross_parameter_rule(client: Tes
 def test_run_from_library_needs_no_pre_existing_strategy_record(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = submit_backtest(client, {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
-        },
-    )
-
-    assert response.status_code == 200, response.text
-    body = response.json()
+        })
     assert body["completed"] is True
     assert body["run_id"] is not None
     assert body["bars_processed"] == 48
@@ -140,11 +136,10 @@ def test_repeat_runs_reuse_the_same_research_container(client: TestClient) -> No
         "strategy_params": FAST_PARAMS,
     }
 
-    first = client.post("/api/v1/backtests/execute", json=payload)
-    second = client.post("/api/v1/backtests/execute", json={**payload, "commission": 0.001})
-
-    assert first.status_code == 200
-    assert second.status_code == 200
+    first_body = submit_backtest(client, payload)
+    second_body = submit_backtest(client, {**payload, "commission": 0.001})
+    assert first_body["run_id"] is not None
+    assert second_body["run_id"] is not None
     assert client.get("/api/v1/strategies").json()["total"] == 1
 
 
@@ -164,16 +159,15 @@ def test_container_name_avoids_colliding_with_a_user_strategy(client: TestClient
     )
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    submit_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
         },
     )
 
-    assert response.status_code == 200, response.text
     names = {item["name"] for item in client.get("/api/v1/strategies").json()["items"]}
     assert names == {"EMA Crossover", "EMA Crossover (Library 2)"}
 
@@ -250,36 +244,34 @@ def test_unknown_library_strategy_returns_404(client: TestClient) -> None:
 def test_library_run_defaults_to_full_explainability(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = submit_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
         },
     )
-
-    assert response.status_code == 200
-    body = response.json()
     assert body["explain_level"] == "full"
-    assert any(event["layer"] == "decision" for event in body["explain_events"])
+    # Decision-layer traces are per-bar, so they are read through the paginated
+    # events endpoint rather than inlined on the receipt or the run detail.
+    decision_events = run_events(client, body["run_id"], layer="decision")
+    assert decision_events
 
 
 def test_an_explicit_level_still_wins(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = submit_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
             "explain_level": "trades_only",
         },
     )
-
-    assert response.status_code == 200
-    assert response.json()["explain_level"] == "trades_only"
+    assert body["explain_level"] == "trades_only"
 
 
 def test_user_code_runs_keep_the_old_default(client: TestClient) -> None:
@@ -305,13 +297,8 @@ def test_user_code_runs_keep_the_old_default(client: TestClient) -> None:
     )
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={"strategy_id": strategy_id, "dataset_id": dataset_id},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["explain_level"] == "trades_only"
+    body = submit_backtest(client, {"strategy_id": strategy_id, "dataset_id": dataset_id})
+    assert body["explain_level"] == "trades_only"
 
 
 # ---------------------------------------------------------------------------
@@ -321,15 +308,12 @@ def test_user_code_runs_keep_the_old_default(client: TestClient) -> None:
 
 def test_saved_run_pins_the_library_strategy_and_its_parameters(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
-    execute = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = submit_backtest(client, {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
-        },
-    )
-    run_id = execute.json()["run_id"]
+        })
+    run_id = body["run_id"]
 
     response = client.get(f"/api/v1/backtests/runs/{run_id}")
 
@@ -347,9 +331,9 @@ def test_saved_run_pins_the_library_strategy_and_its_parameters(client: TestClie
 
 def test_run_list_flags_library_runs_for_the_back_link(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
-    client.post(
-        "/api/v1/backtests/execute",
-        json={
+    submit_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
@@ -366,16 +350,15 @@ def test_run_list_flags_library_runs_for_the_back_link(client: TestClient) -> No
 
 def test_library_run_produces_trades_the_inspectors_can_explain(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
-    execute = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = run_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
         },
     )
-    body = execute.json()
-    run_id = body["run_id"]
+    run_id = body["id"]
     assert body["trade_count"] >= 1, "fixture must produce a trade for the inspectors to explain"
 
     trade = client.get(f"/api/v1/backtests/runs/{run_id}/trades/1")
@@ -389,17 +372,15 @@ def test_library_run_produces_trades_the_inspectors_can_explain(client: TestClie
 
 def test_returning_to_the_container_lists_only_its_own_runs(client: TestClient) -> None:
     dataset_id = _import_dataset(client)
-    execute = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = submit_backtest(
+        client,
+        {
             "dataset_id": dataset_id,
             "library_strategy_id": LIBRARY_STRATEGY_ID,
             "strategy_params": FAST_PARAMS,
         },
     )
-    strategy_id = client.get(f"/api/v1/backtests/runs/{execute.json()['run_id']}").json()[
-        "strategy_id"
-    ]
+    strategy_id = client.get(f"/api/v1/backtests/runs/{body['run_id']}").json()["strategy_id"]
 
     response = client.get("/api/v1/backtests/runs", params={"strategy_id": strategy_id})
 

@@ -46,9 +46,7 @@ class Dataset(Base, IdMixin, TimestampMixin):
     lifecycle: Mapped[str] = mapped_column(
         String(20), nullable=False, default=DatasetLifecycle.ACTIVE
     )
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default=DatasetStatus.UPLOADED
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=DatasetStatus.UPLOADED)
     import_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=ImportStatus.PROCESSING
     )

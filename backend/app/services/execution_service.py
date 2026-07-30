@@ -7,17 +7,18 @@ learns that a database exists.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import JobCancelledError, NotFoundError, ValidationError
 from app.core.paths import DataPaths
 from app.data.errors import InvalidBarsError
-from app.data.loader import load_bars
+from app.data.loader import bar_timestamp_at, iter_bar_rows, load_bar_frame
 from app.domain.enums import (
     DatasetVersionStatus,
     MarketType,
@@ -25,9 +26,10 @@ from app.domain.enums import (
     Timeframe,
 )
 from app.domain.explain import ExplainLevel
-from app.engine.bars import BarIterator
+from app.engine.bars import BarIterator, bar_from_row
+from app.engine.explain import MAX_PER_BAR_EXPLAIN_EVENTS
 from app.engine.explain.timeline import assemble_timeline, service_collector
-from app.engine.results.chart_data import ChartDataBuilder
+from app.engine.results.chart_data import CandleCollector, ChartDataBuilder
 from app.engine.results.result import ExecutionResult
 from app.engine.runner import ExecutionConfig, ExecutionEngine
 from app.engine.strategy.definition import StrategyDefinition
@@ -52,6 +54,12 @@ from app.services.strategy_library_service import StrategyLibraryService
 MAX_CONTAINER_NAME_ATTEMPTS = 20
 #: A library strategy is not tied to one instrument - the dataset decides.
 LIBRARY_CONTAINER_INSTRUMENT = "Any"
+#: Largest dataset that still gets FULL explainability *by default*.
+#:
+#: FULL records up to two events per bar, so this is set below the engine's
+#: per-bar event budget: a run that defaults to FULL is one whose decision log
+#: fits whole. Bigger datasets can still be run at FULL, but only on request.
+FULL_EXPLAIN_BAR_LIMIT = MAX_PER_BAR_EXPLAIN_EVENTS // 2
 
 
 @dataclass(frozen=True)
@@ -82,6 +90,9 @@ class ResolvedDatasetVersion:
     quality_score: int | None
     data_import_id: str | None
     imported_at: datetime | None
+    #: Bars in this version, known before the parquet is opened. Lets the run
+    #: workflow size its explainability budget against the actual dataset.
+    row_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -177,7 +188,9 @@ class ExecutionService:
             explain_level=(
                 explain_level
                 if explain_level is not None
-                else self.default_explain_level(library_strategy_id)
+                else self.default_explain_level(
+                    library_strategy_id, bar_count=dataset_version.row_count
+                )
             ),
             instrument=dataset.name,
             timeframe=dataset.timeframe,
@@ -190,16 +203,28 @@ class ExecutionService:
             dataset_version=dataset_version,
         )
 
-    def default_explain_level(self, library_strategy_id: str | None) -> ExplainLevel:
+    def default_explain_level(
+        self, library_strategy_id: str | None, *, bar_count: int = 0
+    ) -> ExplainLevel:
         """Explainability to collect when the caller expressed no preference.
 
         A library strategy traces every condition it evaluates; defaulting such
         a run to trades-only would silently discard the Decision Inspector's
         entire input. Hand-written code keeps the long-standing default.
+
+        ``bar_count`` caps that generosity. FULL records events per *bar*, so on
+        a long intraday dataset it produces a decision log hundreds of times the
+        size of the dataset - and one the engine's own event budget would
+        truncate anyway. Nobody asking for a default wants a log that arrives
+        truncated, so past the budget the default drops to trades-only and FULL
+        becomes an explicit choice.
         """
         if library_strategy_id is None:
             return ExplainLevel.TRADES_ONLY
-        return self.library.get(library_strategy_id).recommended_explain_level
+        recommended = self.library.get(library_strategy_id).recommended_explain_level
+        if recommended is ExplainLevel.FULL and bar_count > FULL_EXPLAIN_BAR_LIMIT:
+            return ExplainLevel.TRADES_ONLY
+        return recommended
 
     def resolve_container(self, *, strategy_id: str | None, library_strategy_id: str | None) -> str:
         """The ``strategies`` row this run will be recorded against.
@@ -282,6 +307,9 @@ class ExecutionService:
         config: ExecutionConfig,
         strategy: ResolvedStrategy | None = None,
         dataset_version: ResolvedDatasetVersion | None = None,
+        on_progress: Callable[..., None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
+        max_bars: int | None = None,
     ) -> ExecutionResult:
         resolved = strategy or self.resolve_strategy(strategy_id=strategy_id)
         dataset = self.dataset_repo.get(dataset_id)
@@ -289,33 +317,62 @@ class ExecutionService:
             raise NotFoundError(f"Dataset '{dataset_id}' not found")
         version = dataset_version or self.resolve_dataset_version(dataset_id)
         try:
-            rows = load_bars(version.parquet_path)
+            # Columnar and validated, but not yet a single Python row object:
+            # the bars are streamed out of this frame one at a time below.
+            frame = load_bar_frame(version.parquet_path)
         except InvalidBarsError as exc:
             raise ValidationError(str(exc)) from exc
 
-        clock_ms = int(rows[0]["ts"]) if rows else 0
+        if should_cancel is not None and should_cancel():
+            raise JobCancelledError("Backtest cancelled")
+
+        total_bars = frame.height if max_bars is None else min(max_bars, frame.height)
+        if on_progress is not None:
+            on_progress(bars_processed=0, total_bars=total_bars, phase="loading")
+
+        # Read off the ts column rather than from a materialised first/last row.
+        clock_ms = bar_timestamp_at(frame, 0) if total_bars else 0
+        final_ts = bar_timestamp_at(frame, total_bars - 1) if total_bars else clock_ms
         service_events = service_collector(config.explain_level, timestamp_ms=clock_ms)
         if config.explain_level is not ExplainLevel.NONE:
             service_events.set_context(instrument=dataset.name, timeframe=dataset.timeframe)
         dataset_event = None
         if config.explain_level is not ExplainLevel.NONE:
             service_events.record_dataset_loaded(
-                bar_count=len(rows),
+                bar_count=total_bars,
                 dataset_name=dataset.name,
             )
             dataset_event = service_events.events[-1]
 
         engine = ExecutionEngine(config)
-        result = engine.run(bars=BarIterator.from_rows(rows), strategy=resolved.provider)
+
+        def engine_progress(done: int, total: int) -> None:
+            if on_progress is not None:
+                on_progress(bars_processed=done, total_bars=total, phase="engine")
+
+        # The chart's candles are collected off the replay stream, so the bars
+        # are converted once and no full copy of them outlives the run.
+        candle_collector = CandleCollector()
+        bar_stream = candle_collector.tap(
+            bar_from_row(row) for row in iter_bar_rows(frame, limit=total_bars)
+        )
+
+        result = engine.run(
+            bars=BarIterator.streaming(bar_stream, count=total_bars),
+            strategy=resolved.provider,
+            on_progress=engine_progress,
+            should_cancel=should_cancel,
+        )
+        if should_cancel is not None and should_cancel():
+            raise JobCancelledError("Backtest cancelled")
         enriched = self.metrics_service.enrich(result, initial_capital=config.initial_capital)
-        candles, entry_markers, exit_markers = self.chart_builder.build(rows, enriched.trades)
+        candles = candle_collector.candles
+        entry_markers, exit_markers = self.chart_builder.markers(enriched.trades)
 
         metrics_event = None
         charts_event = None
         if config.explain_level is not ExplainLevel.NONE:
-            service_events.set_clock(
-                int(rows[-1]["ts"]) if rows else clock_ms,
-            )
+            service_events.set_clock(final_ts)
             service_events.record_metrics_generated(trade_count=enriched.trade_count)
             metrics_event = service_events.events[-1]
             service_events.record_charts_generated(
@@ -348,37 +405,60 @@ class ExecutionService:
             return existing
 
         metadata = definition.metadata
-        container = Strategy(
-            name=self._available_container_name(metadata.name),
-            description=metadata.description or metadata.name,
-            hypothesis=metadata.documentation.overview or None,
-            market_type=metadata.markets[0] if metadata.markets else MarketType.EQUITY,
-            instrument=LIBRARY_CONTAINER_INSTRUMENT,
-            timeframe=metadata.timeframes[0] if metadata.timeframes else Timeframe.M1,
-            status=StrategyStatus.TESTING,
-            tags=", ".join(metadata.tags) or None,
-            library_strategy_id=definition.id,
+        preferred = metadata.name
+        last_error: IntegrityError | None = None
+
+        for _ in range(MAX_CONTAINER_NAME_ATTEMPTS):
+            name = self._available_container_name(preferred)
+            container = Strategy(
+                name=name,
+                description=metadata.description or metadata.name,
+                hypothesis=metadata.documentation.overview or None,
+                market_type=metadata.markets[0] if metadata.markets else MarketType.EQUITY,
+                instrument=LIBRARY_CONTAINER_INSTRUMENT,
+                timeframe=metadata.timeframes[0] if metadata.timeframes else Timeframe.M1,
+                status=StrategyStatus.TESTING,
+                tags=", ".join(metadata.tags) or None,
+                library_strategy_id=definition.id,
+            )
+            try:
+                self.strategy_repo.add(container)
+                self.session.commit()
+            except IntegrityError as exc:
+                self.session.rollback()
+                last_error = exc
+                raced = self.strategy_repo.get_by_library_strategy_id(definition.id)
+                if raced is not None:
+                    return raced
+                # Another row took this name (often a soft-deleted container). Try
+                # the next free variant on the next loop iteration.
+                preferred = name
+                continue
+            self.session.refresh(container)
+            return container
+
+        if last_error is not None:
+            raise last_error
+        raise ValidationError(
+            f"Could not allocate a unique research container name for '{metadata.name}'"
         )
-        self.strategy_repo.add(container)
-        self.session.commit()
-        self.session.refresh(container)
-        return container
 
     def _available_container_name(self, preferred: str) -> str:
         """``preferred``, or the first free variant of it.
 
         ``strategies.name`` is unique, and a user is perfectly entitled to have
-        already named an idea "Opening Range Breakout".
+        already named an idea "Opening Range Breakout". Soft-deleted rows still
+        reserve their names at the database level.
         """
-        if self.strategy_repo.get_by_name(preferred) is None:
+        if not self.strategy_repo.is_name_taken(preferred):
             return preferred
         for attempt in range(2, MAX_CONTAINER_NAME_ATTEMPTS + 2):
             candidate = f"{preferred} (Library {attempt})"
-            if self.strategy_repo.get_by_name(candidate) is None:
+            if not self.strategy_repo.is_name_taken(candidate):
                 return candidate
         raise ValidationError(
-            f"Could not find an unused strategy name for '{preferred}'; "
-            "rename or delete the existing ones"
+            f"Could not find a free container name for '{preferred}' after "
+            f"{MAX_CONTAINER_NAME_ATTEMPTS} attempts"
         )
 
     def resolve_dataset_version(
@@ -439,6 +519,7 @@ class ExecutionService:
             quality_score=version.quality_score,
             data_import_id=version.data_import_id,
             imported_at=imported_at or version.created_at,
+            row_count=version.row_count,
         )
 
     def _load_source(self, strategy_id: str) -> str:
@@ -449,4 +530,3 @@ class ExecutionService:
         if code is None or not code.code.strip():
             raise ValidationError("This strategy has no code saved yet")
         return code.code
-

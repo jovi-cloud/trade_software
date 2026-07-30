@@ -65,8 +65,10 @@ def dataset_to_read(dataset: Dataset, *, version_count: int = 0) -> DatasetRead:
         detected_tf = Timeframe(dataset.detected_timeframe)
 
     tf_value = dataset.timeframe or dataset.detected_timeframe or Timeframe.M1.value
-    status = DatasetStatus(dataset.status) if dataset.status else import_status_to_dataset_status(
-        dataset.import_status
+    status = (
+        DatasetStatus(dataset.status)
+        if dataset.status
+        else import_status_to_dataset_status(dataset.import_status)
     )
     lifecycle = (
         DatasetLifecycle(dataset.lifecycle)
@@ -182,9 +184,7 @@ class DatasetService:
     def get_version(self, dataset_id: str, version_number: int) -> DatasetVersionRead:
         version = self.version_repo.get_by_dataset_and_number(dataset_id, version_number)
         if version is None:
-            raise NotFoundError(
-                f"Dataset '{dataset_id}' has no version {version_number}"
-            )
+            raise NotFoundError(f"Dataset '{dataset_id}' has no version {version_number}")
         return version_to_read(version)
 
     def resolve_version_parquet(

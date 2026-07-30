@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 
 import {
   missingRequirements,
+  parseMaxBars,
   parseNumericSettings,
   resolveExplainLevel,
   selectLibraryStrategy,
@@ -108,8 +109,11 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
     const settings = parseNumericSettings(state)
     if (!settings.ok) return setFieldError(settings.error)
 
+    const maxBars = parseMaxBars(state)
+    if (!maxBars.ok) return setFieldError(maxBars.error)
+
     setFieldError(null)
-    await onSubmit(toExecuteInput(state, settings.values, explainLevel))
+    await onSubmit(toExecuteInput(state, settings.values, explainLevel, maxBars.value))
   }
 
   if (strategies.isLoading || datasets.isLoading || library.isLoading) {
@@ -243,6 +247,7 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
         explainLevel={explainLevel}
         supportsConditionTracing={supportsTracing}
         isRecommendedLevel={!state.explainLevelChosen}
+        datasetBarCount={selectedDataset?.row_count}
         onChange={patch}
       />
 

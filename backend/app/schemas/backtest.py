@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.enums import OrderStatus, OrderType, PositionSide
 from app.domain.explain import ExplainLevel
+from app.schemas.analytics import AnalyticsReportRead
 from app.schemas.explain import ExplainEventRead
 
 
@@ -60,6 +61,11 @@ class BacktestExecuteRequest(BaseModel):
     strategy_params: dict[str, bool | int | float | str] | None = Field(
         default=None,
         description="Parameter values for the library strategy; defaults fill any gaps.",
+    )
+    max_bars: int | None = Field(
+        default=None,
+        ge=1,
+        description="Replay only the first N bars. Useful for quick smoke tests.",
     )
 
     @model_validator(mode="after")
@@ -149,6 +155,35 @@ class PerformanceMetricsRead(BaseModel):
     return_pct: float
 
 
+class BacktestJobResultRead(BaseModel):
+    """What a finished backtest job hands back: a receipt, not the result.
+
+    A job record lives in memory for the process lifetime and is re-serialised
+    on *every* progress poll, so its payload has to be bounded. The replay
+    itself is already persisted - ``run_id`` is the durable handle, and the
+    run detail and paginated event endpoints serve the parts that scale with
+    the dataset (candles, trades, orders, the explainability log).
+
+    What stays here is what the run form needs to say "done, and here is what
+    happened" without a second request: the headline counts, and any warnings
+    or errors the trader must not have to click through to discover.
+    """
+
+    run_id: str
+    dataset_version_id: str | None = None
+    dataset_version_number: int | None = None
+    dataset_fingerprint: str | None = None
+    completed: bool
+    bars_processed: int = Field(ge=0)
+    execution_time_ms: float = Field(ge=0)
+    trade_count: int = Field(ge=0)
+    final_cash: float
+    position_closed: bool
+    explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY
+    warnings: list[str]
+    errors: list[str]
+
+
 class ExecutionResultRead(BaseModel):
     """Outcome of one in-process replay with performance analytics."""
 
@@ -168,6 +203,9 @@ class ExecutionResultRead(BaseModel):
     position_closed: bool
     trade_count: int = Field(ge=0)
     metrics: PerformanceMetricsRead
+    #: The full performance and risk report: return, risk, risk-adjusted, trade
+    #: and portfolio metrics, plus the equity, drawdown, monthly and yearly series.
+    analytics: AnalyticsReportRead
     equity_history: list[EquityPointRead]
     candles: list[CandleRead]
     entry_markers: list[TradeMarkerRead]

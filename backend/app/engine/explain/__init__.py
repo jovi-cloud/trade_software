@@ -7,9 +7,10 @@ from app.domain.explain import (
     ExplainLayer,
     ExplainLevel,
 )
-from app.engine.explain.collector import ExplainCollector
+from app.engine.explain.collector import MAX_PER_BAR_EXPLAIN_EVENTS, ExplainCollector
 
 __all__ = [
+    "MAX_PER_BAR_EXPLAIN_EVENTS",
     "ExplainCollector",
     "ExplainEvent",
     "ExplainEventStatus",

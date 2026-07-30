@@ -45,3 +45,10 @@ class DomainError(AppError):
 
     code = "DOMAIN_ERROR"
     http_status = 400
+
+
+class JobCancelledError(AppError):
+    """A background job was cancelled before it finished."""
+
+    code = "CANCELLED"
+    http_status = 409

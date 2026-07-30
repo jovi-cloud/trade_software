@@ -22,6 +22,15 @@ class StrategyRepository:
     def get_by_name(self, name: str) -> Strategy | None:
         return self.session.scalars(self._active().where(Strategy.name == name)).first()
 
+    def is_name_taken(self, name: str) -> bool:
+        """Whether ``name`` is reserved in the database, including soft-deleted rows.
+
+        ``strategies.name`` is unique at the schema level, so a deleted row still
+        blocks the name until a different one is chosen.
+        """
+        stmt = select(Strategy.id).where(Strategy.name == name).limit(1)
+        return self.session.scalar(stmt) is not None
+
     def get_by_library_strategy_id(self, library_strategy_id: str) -> Strategy | None:
         """The research container holding runs of one built-in strategy, if any."""
         stmt = (

@@ -8,6 +8,7 @@ from app.api.v1 import (
     backtest_runs,
     backtests,
     datasets,
+    jobs,
     strategies,
     strategy_code,
     strategy_library,
@@ -22,9 +23,10 @@ api_router.include_router(strategy_library.router)
 api_router.include_router(datasets.router)
 api_router.include_router(backtest_runs.router)
 api_router.include_router(backtests.router)
+api_router.include_router(jobs.router)
 
 # Phase 1: instruments
 # Phase 2: strategy_versions
-# Phase 3: jobs, indicators
+# Phase 3: indicators
 # Phase 4: results
 # Phase 5: notes

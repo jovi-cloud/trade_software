@@ -91,6 +91,40 @@ def test_plan_defaults_a_library_run_to_full_explainability(
     assert plan.config.explain_level is ExplainLevel.FULL
 
 
+def test_a_large_dataset_is_not_defaulted_to_full_explainability(
+    db_session: Session, settings: Settings
+) -> None:
+    """FULL records per *bar*, so defaulting to it scales with the dataset.
+
+    Left unguarded, a 194k-bar intraday dataset produced a 460 MB decision log
+    the save path could not serialise without exhausting memory - and one the
+    engine's event budget would have truncated anyway.
+    """
+    service = _service(db_session, settings)
+
+    assert (
+        service.default_explain_level("rsi_mean_reversion", bar_count=194_553)
+        is ExplainLevel.TRADES_ONLY
+    )
+    assert service.default_explain_level("rsi_mean_reversion", bar_count=500) is ExplainLevel.FULL
+
+
+def test_a_large_dataset_may_still_be_run_at_full_on_request(
+    db_session: Session, settings: Settings
+) -> None:
+    """The size guard picks a default; it must not override an explicit choice."""
+    plan = _service(db_session, settings).plan(
+        dataset_id=_dataset_id(db_session, settings),
+        library_strategy_id="rsi_mean_reversion",
+        explain_level=ExplainLevel.FULL,
+        initial_capital=100_000,
+        commission=0,
+        slippage=0,
+    )
+
+    assert plan.config.explain_level is ExplainLevel.FULL
+
+
 def test_plan_honours_an_explicit_explain_level(db_session: Session, settings: Settings) -> None:
     plan = _service(db_session, settings).plan(
         dataset_id=_dataset_id(db_session, settings),

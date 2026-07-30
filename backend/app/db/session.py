@@ -56,9 +56,10 @@ def get_session_factory() -> sessionmaker[Session]:
 
 
 @contextmanager
-def session_scope() -> Iterator[Session]:
+def session_scope(factory: sessionmaker[Session] | None = None) -> Iterator[Session]:
     """Transactional scope for non-request code (jobs, scripts)."""
-    session = get_session_factory()()
+    session_factory = factory or get_session_factory()
+    session = session_factory()
     try:
         yield session
         session.commit()

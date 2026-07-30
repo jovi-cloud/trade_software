@@ -17,7 +17,7 @@ function BackendStatus() {
         : { label: 'Degraded', dotClass: 'bg-loss' }
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+    <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm">
       <span className={cn('size-2 rounded-full', dotClass)} />
       {label}
     </div>
@@ -28,11 +28,18 @@ export function TopBar() {
   const { theme, toggleTheme } = useTheme()
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-end gap-4 border-b border-border px-6">
-      <BackendStatus />
-      <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-        {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-      </Button>
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/80 bg-card/40 px-6 backdrop-blur-sm">
+      <p className="text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">Technobeala</span>
+        <span className="mx-2 text-border">·</span>
+        Trading strategy research
+      </p>
+      <div className="flex items-center gap-3">
+        <BackendStatus />
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </Button>
+      </div>
     </header>
   )
 }

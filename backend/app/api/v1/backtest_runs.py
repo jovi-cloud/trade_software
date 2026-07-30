@@ -17,6 +17,11 @@ from app.schemas.backtest_run import (
     read_from_row,
 )
 from app.schemas.common import Page
+from app.schemas.comparison import (
+    ComparisonReportRead,
+    RunComparisonRequest,
+    comparison_report_read,
+)
 from app.schemas.explain import (
     BarInspectionRead,
     ExplainEventFilter,
@@ -24,11 +29,27 @@ from app.schemas.explain import (
     TradeInspectionRead,
 )
 from app.services.backtest_run_service import BacktestRunService
+from app.services.comparison_service import ComparisonService
 from app.services.explain_service import ExplainService
 
 router = APIRouter(prefix="/backtests/runs", tags=["backtest-runs"])
 
-SortField = Literal["created_at", "execution_completed_at", "net_profit", "trade_count"]
+SortField = Literal[
+    "created_at",
+    "execution_completed_at",
+    "net_profit",
+    "trade_count",
+    "total_return_pct",
+    "cagr_pct",
+    "max_drawdown_pct",
+    "sharpe",
+    "sortino",
+    "calmar",
+    "profit_factor",
+    "win_rate_pct",
+    "expectancy",
+    "exposure_pct",
+]
 SortOrder = Literal["asc", "desc"]
 EventSortField = Literal["seq", "timestamp_ms", "bar_index", "event_type"]
 
@@ -72,11 +93,41 @@ def list_backtest_runs(
     )
 
 
+@router.get(
+    "/compare",
+    response_model=ComparisonReportRead,
+    summary="Compare multiple backtest runs",
+)
+def compare_backtest_runs_get(
+    db: DbSession,
+    paths: Paths,
+    run_ids: list[str] = Query(..., min_length=2, max_length=10),
+) -> ComparisonReportRead:
+    service = ComparisonService(db, paths)
+    report = service.compare_run_ids(run_ids)
+    return comparison_report_read(report)
+
+
+@router.post(
+    "/compare",
+    response_model=ComparisonReportRead,
+    summary="Compare multiple backtest runs",
+)
+def compare_backtest_runs_post(
+    payload: RunComparisonRequest,
+    db: DbSession,
+    paths: Paths,
+) -> ComparisonReportRead:
+    service = ComparisonService(db, paths)
+    report = service.compare_run_ids(payload.run_ids)
+    return comparison_report_read(report)
+
+
 @router.get("/{run_id}", response_model=BacktestRunRead, summary="Get a backtest run")
 def get_backtest_run(run_id: str, db: DbSession, paths: Paths) -> BacktestRunRead:
     service = BacktestRunService(db, paths)
     run, strategy_name, dataset_name = service.get(run_id)
-    return read_from_row(run, strategy_name, dataset_name)
+    return read_from_row(run, strategy_name, dataset_name, analytics=service.analytics_for(run))
 
 
 @router.patch("/{run_id}", response_model=BacktestRunRead, summary="Update run research journal")
@@ -86,7 +137,7 @@ def update_backtest_run_research(
     service = BacktestRunService(db, paths)
     run = service.update_research(run_id, payload)
     row = service.get(run.id)
-    return read_from_row(row[0], row[1], row[2])
+    return read_from_row(row[0], row[1], row[2], analytics=service.analytics_for(row[0]))
 
 
 @router.delete(

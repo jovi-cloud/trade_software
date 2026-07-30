@@ -10,6 +10,7 @@ from tests.api.test_backtests import (
     _import_dataset,
     _save_strategy_code,
 )
+from tests.helpers.backtests import submit_backtest
 
 
 def _execute_backtest(client: TestClient) -> tuple[str, str]:
@@ -17,9 +18,9 @@ def _execute_backtest(client: TestClient) -> tuple[str, str]:
     _save_strategy_code(client, strategy_id)
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = submit_backtest(
+        client,
+        {
             "strategy_id": strategy_id,
             "dataset_id": dataset_id,
             "initial_capital": 100_000,
@@ -27,8 +28,6 @@ def _execute_backtest(client: TestClient) -> tuple[str, str]:
             "slippage": 0.0005,
         },
     )
-    assert response.status_code == 200
-    body = response.json()
     run_id = body["run_id"]
     assert run_id is not None
     return run_id, strategy_id
@@ -167,12 +166,7 @@ class Strategy:
     )
     dataset_id = _import_dataset(client)
 
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={"strategy_id": strategy_id, "dataset_id": dataset_id},
-    )
-    assert response.status_code == 200
-    body = response.json()
+    body = submit_backtest(client, {"strategy_id": strategy_id, "dataset_id": dataset_id})
     assert body["completed"] is False
     run_id = body["run_id"]
     assert run_id is not None

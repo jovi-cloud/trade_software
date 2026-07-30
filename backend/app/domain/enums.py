@@ -175,3 +175,19 @@ class BacktestRunStatus(StrEnum):
 
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class JobStatus(StrEnum):
+    """Lifecycle of a background job."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class JobType(StrEnum):
+    """Kinds of work the in-process job runner handles."""
+
+    BACKTEST = "backtest"

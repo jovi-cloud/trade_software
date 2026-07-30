@@ -37,6 +37,10 @@ export const qk = {
     list: (params: Record<string, unknown>) => [...qk.backtestRuns.all, 'list', params] as const,
     detail: (id: string) => [...qk.backtestRuns.all, 'detail', id] as const,
   },
+  comparison: {
+    all: ['comparison'] as const,
+    report: (runIdsKey: string) => [...qk.comparison.all, 'report', runIdsKey] as const,
+  },
   explain: {
     all: ['explain'] as const,
     events: (runId: string, filters: Record<string, unknown>) =>

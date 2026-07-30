@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,10 +24,10 @@ export function DatasetCard({ dataset, onDeleteRequest }: DatasetCardProps) {
   const meta = importStatusMeta(dataset.import_status)
 
   return (
-    <Card className="gap-3 py-5">
+    <Card className="gap-3 py-5 transition-colors hover:border-primary/40">
       <CardHeader className="grid-rows-1 gap-2 px-5">
         <div className="flex items-start justify-between gap-2">
-          <Link to={`/data/${dataset.id}`} className="min-w-0">
+          <Link to={`/data/${dataset.id}`} className="min-w-0 flex-1">
             <h3 className="truncate text-sm font-semibold hover:underline">{dataset.name}</h3>
           </Link>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -66,6 +66,11 @@ export function DatasetCard({ dataset, onDeleteRequest }: DatasetCardProps) {
         </p>
         <p className="text-xs text-muted-foreground">Imported {formatDate(dataset.created_at)}</p>
       </CardContent>
+      <CardFooter className="px-5 pt-0">
+        <Button variant="outline" size="sm" asChild className="w-full">
+          <Link to={`/data/${dataset.id}`}>View details</Link>
+        </Button>
+      </CardFooter>
     </Card>
   )
 }

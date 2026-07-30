@@ -20,7 +20,9 @@ def _candles() -> list[dict[str, float | int]]:
 
 
 def _collector_with_buy_signal() -> ExplainCollector:
-    collector = ExplainCollector(ExplainLevel.TRADES_ONLY)
+    # FULL: condition traces are what the Decision Inspector reads, and only
+    # FULL records them.
+    collector = ExplainCollector(ExplainLevel.FULL)
     conditions = ConditionCollector()
     conditions.trace_condition(
         "EMA20 > EMA50",

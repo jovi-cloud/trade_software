@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { formatDate, formatInteger } from '@/lib/format'
 
-import type { DatasetVersion } from '../types'
+import type { DatasetVersion } from '@/features/datasets/types'
 
 const LATEST = 'latest'
 

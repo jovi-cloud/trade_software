@@ -67,6 +67,10 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     position_closed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     metrics_json: Mapped[str] = mapped_column(Text, nullable=False)
+    # Phase 5: the full performance and risk report, exactly as the analytics
+    # layer produced it. Nullable because runs recorded before analytics existed
+    # keep their snapshot; those are rebuilt on read from trades + candles.
+    analytics_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     equity_history_json: Mapped[str] = mapped_column(Text, nullable=False)
     entry_markers_json: Mapped[str] = mapped_column(Text, nullable=False)
     exit_markers_json: Mapped[str] = mapped_column(Text, nullable=False)
@@ -78,6 +82,22 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     errors_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     explain_events_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     explain_level: Mapped[str] = mapped_column(String(20), nullable=False, default="trades_only")
+
+    # Denormalised headline analytics (ARCHITECTURE.md 3.2). Real columns so the
+    # runs list can sort and filter on any of them without opening a JSON blob
+    # per row. Nullable: a metric can be genuinely undefined (no losing trade
+    # means no profit factor), and pre-analytics runs have none of them until
+    # they are next read.
+    total_return_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cagr_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    max_drawdown_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sharpe: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sortino: Mapped[float | None] = mapped_column(Float, nullable=True)
+    calmar: Mapped[float | None] = mapped_column(Float, nullable=True)
+    profit_factor: Mapped[float | None] = mapped_column(Float, nullable=True)
+    win_rate_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    expectancy: Mapped[float | None] = mapped_column(Float, nullable=True)
+    exposure_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=BacktestRunStatus.COMPLETED, index=True

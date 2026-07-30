@@ -24,6 +24,17 @@ from app.engine.execution.order import Order
 from app.engine.execution.trade import Trade
 from app.engine.explain import messages
 
+#: Ceiling on the per-bar events one run may record.
+#:
+#: The lifecycle, order and trade events that make a run explainable are bounded
+#: by the trade count. Three of them - condition evaluations, bar processing and
+#: open-position marks - are bounded only by the *bar* count, and at roughly
+#: 500-1300 bytes each they are what turns a 2 MB dataset into a 460 MB run
+#: record that cannot be serialised without exhausting memory. Past this budget
+#: they are dropped and the run carries a warning saying so; a truncated
+#: decision log is recoverable, an OOM during save is not.
+MAX_PER_BAR_EXPLAIN_EVENTS = 50_000
+
 
 @dataclass
 class _PositionObservation:
@@ -48,6 +59,8 @@ class ExplainCollector:
     _timeframe: str | None = None
     _position_counter: int = 0
     _active_position: _PositionObservation | None = None
+    _per_bar_events: int = 0
+    _dropped_per_bar_events: int = 0
 
     def __init__(self, level: ExplainLevel) -> None:
         self.level = level
@@ -58,6 +71,8 @@ class ExplainCollector:
         self._timeframe = None
         self._position_counter = 0
         self._active_position = None
+        self._per_bar_events = 0
+        self._dropped_per_bar_events = 0
 
     @property
     def events(self) -> tuple[ExplainEvent, ...]:
@@ -76,8 +91,21 @@ class ExplainCollector:
         return self.level is ExplainLevel.FULL
 
     @property
+    def dropped_event_count(self) -> int:
+        """Per-bar events discarded because the run exhausted its event budget."""
+        return self._dropped_per_bar_events
+
+    @property
     def clock_ms(self) -> int:
         return self._clock_ms
+
+    def _reserve_per_bar_slot(self) -> bool:
+        """Claim budget for one per-bar event, or count it as dropped."""
+        if self._per_bar_events >= MAX_PER_BAR_EXPLAIN_EVENTS:
+            self._dropped_per_bar_events += 1
+            return False
+        self._per_bar_events += 1
+        return True
 
     def set_context(self, *, instrument: str | None, timeframe: str | None) -> None:
         self._instrument = instrument
@@ -97,6 +125,10 @@ class ExplainCollector:
         merged._clock_ms = max(self._clock_ms, other._clock_ms)
         merged._instrument = self._instrument or other._instrument
         merged._timeframe = self._timeframe or other._timeframe
+        merged._per_bar_events = self._per_bar_events + other._per_bar_events
+        merged._dropped_per_bar_events = (
+            self._dropped_per_bar_events + other._dropped_per_bar_events
+        )
         return merged
 
     def extend(self, events: tuple[ExplainEvent, ...]) -> None:
@@ -216,6 +248,8 @@ class ExplainCollector:
     def record_bar_processing_started(self, *, bar_index: int, timestamp_ms: int) -> None:
         if not self.records_bar_events:
             return
+        if not self._reserve_per_bar_slot():
+            return
         self._append_event(
             event_type=ExplainEventType.BAR_PROCESSING_STARTED,
             layer=ExplainLayer.EXECUTION,
@@ -232,7 +266,13 @@ class ExplainCollector:
         *,
         timestamp_ms: int,
     ) -> None:
-        if not self.enabled:
+        # Decision-layer detail, one event per bar, and the single largest
+        # contributor to a run record. It is what the Decision Inspector reads,
+        # so it belongs to FULL - at TRADES_ONLY nobody asked "why did nothing
+        # happen on this bar", and answering it anyway cost ~1.3 KB per bar.
+        if not self.records_bar_events:
+            return
+        if not self._reserve_per_bar_slot():
             return
         passed_count = sum(1 for condition in snapshot.conditions if condition.passed)
         total_count = len(snapshot.conditions)
@@ -491,6 +531,12 @@ class ExplainCollector:
             position.max_favorable = unrealized_pnl
         if unrealized_pnl < position.max_adverse:
             position.max_adverse = unrealized_pnl
+
+        # The running MAE/MFE above is what record_profit_calculated reports, so
+        # it is tracked on every bar regardless of budget. Only the event is
+        # dropped.
+        if not self._reserve_per_bar_slot():
+            return
 
         self._append_event(
             event_type=ExplainEventType.POSITION_UPDATED,

@@ -87,7 +87,7 @@ disallow_untyped_defs = true
 no_implicit_optional = true
 
 [[tool.mypy.overrides]]
-module = ["app.engine.*", "app.domain.*", "app.data.*"]
+module = ["app.engine.*", "app.domain.*", "app.data.*", "app.analytics.*"]
 strict = true
 
 [[tool.mypy.overrides]]
@@ -141,6 +141,48 @@ forbidden_modules = [
     "app.models",
     "app.db",
     "app.schemas",
+    "app.analytics",
+    "app.comparison",
+    "fastapi",
+    "sqlalchemy",
+    "pydantic",
+]
+
+# The analytics layer is a leaf beside the engine, not inside it: it consumes
+# plain records and returns a report. Keeping it framework-free and
+# engine-independent is what lets optimisation, walk-forward, Monte Carlo and
+# PDF export reuse it, and what lets it be tested without a bar loop.
+[[tool.importlinter.contracts]]
+name = "Analytics is a pure leaf layer"
+type = "forbidden"
+source_modules = ["app.analytics"]
+forbidden_modules = [
+    "app.api",
+    "app.services",
+    "app.repositories",
+    "app.models",
+    "app.db",
+    "app.schemas",
+    "app.engine",
+    "app.data",
+    "fastapi",
+    "sqlalchemy",
+    "pydantic",
+]
+
+[[tool.importlinter.contracts]]
+name = "Comparison is a pure leaf layer"
+type = "forbidden"
+source_modules = ["app.comparison"]
+forbidden_modules = [
+    "app.api",
+    "app.services",
+    "app.repositories",
+    "app.models",
+    "app.db",
+    "app.schemas",
+    "app.engine",
+    "app.data",
     "fastapi",
     "sqlalchemy",
     "pydantic",
@@ -164,6 +206,8 @@ forbidden_modules = [
     "app.db",
     "app.engine",
     "app.data",
+    "app.analytics",
+    "app.comparison",
     "fastapi",
     "sqlalchemy",
     "pydantic",

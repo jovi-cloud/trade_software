@@ -252,6 +252,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/datasets/import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview column mapping for an uploaded file */
+        post: operations["preview_import_api_v1_datasets_import_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets/import": {
         parameters: {
             query?: never;
@@ -261,7 +278,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload a CSV and import it as a dataset */
+        /** Upload a market data file and import it as a dataset */
         post: operations["import_dataset_api_v1_datasets_import_post"];
         delete?: never;
         options?: never;
@@ -287,6 +304,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/datasets/{dataset_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable versions for a dataset */
+        get: operations["list_dataset_versions_api_v1_datasets__dataset_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/versions/{version_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one dataset version */
+        get: operations["get_dataset_version_api_v1_datasets__dataset_id__versions__version_number__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/versions/{version_number}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download the parquet file for a dataset version */
+        get: operations["download_dataset_version_api_v1_datasets__dataset_id__versions__version_number__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import a new immutable version for an existing dataset */
+        post: operations["import_dataset_version_api_v1_datasets__dataset_id__import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List import history for a dataset */
+        get: operations["list_dataset_imports_api_v1_datasets__dataset_id__imports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/imports/{import_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one import record with its validation report */
+        get: operations["get_dataset_import_api_v1_datasets__dataset_id__imports__import_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/references": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List backtest runs that depend on this dataset */
+        get: operations["dataset_references_api_v1_datasets__dataset_id__references_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a dataset so it cannot be used for new backtests */
+        post: operations["archive_dataset_api_v1_datasets__dataset_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets/{dataset_id}/validate": {
         parameters: {
             query?: never;
@@ -296,7 +449,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Re-run validation and re-import from the originally uploaded CSV */
+        /** Re-run validation from the latest stored upload (creates a new version) */
         post: operations["revalidate_dataset_api_v1_datasets__dataset_id__validate_post"];
         delete?: never;
         options?: never;
@@ -332,6 +485,24 @@ export interface paths {
         get: operations["list_backtest_runs_api_v1_backtests_runs_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compare multiple backtest runs */
+        get: operations["compare_backtest_runs_get_api_v1_backtests_runs_compare_get"];
+        put?: never;
+        /** Compare multiple backtest runs */
+        post: operations["compare_backtest_runs_post_api_v1_backtests_runs_compare_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -459,10 +630,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get background job status */
+        get: operations["get_job_api_v1_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a running job */
+        post: operations["cancel_job_api_v1_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AnalyticsMetaRead
+         * @description The assumptions a report was computed under.
+         */
+        AnalyticsMetaRead: {
+            /** Initial Capital */
+            initial_capital: number;
+            /** Bar Count */
+            bar_count: number;
+            /** Trade Count */
+            trade_count: number;
+            /** Trading Days */
+            trading_days: number;
+            /** Start Ts */
+            start_ts: number | null;
+            /** End Ts */
+            end_ts: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number;
+            /** Trading Days Per Year */
+            trading_days_per_year: number;
+            /** Risk Free Rate Pct */
+            risk_free_rate_pct: number;
+            /** Var Confidence Pct */
+            var_confidence_pct: number;
+            /** Rolling Window Days */
+            rolling_window_days: number;
+            /** Analytics Version */
+            analytics_version: string;
+        };
+        /**
+         * AnalyticsReportRead
+         * @description A complete performance and risk report for one run.
+         */
+        AnalyticsReportRead: {
+            returns: components["schemas"]["ReturnMetricsRead"];
+            risk: components["schemas"]["RiskMetricsRead"];
+            risk_adjusted: components["schemas"]["RiskAdjustedMetricsRead"];
+            trades: components["schemas"]["TradeMetricsRead"];
+            portfolio: components["schemas"]["PortfolioMetricsRead"];
+            statistics: components["schemas"]["StatisticalMetricsRead"];
+            series: components["schemas"]["PortfolioSeriesRead"];
+            meta: components["schemas"]["AnalyticsMetaRead"];
+            /** Metrics */
+            metrics: components["schemas"]["MetricValueRead"][];
+        };
         /**
          * BacktestExecuteRequest
          * @description Inputs for replaying a strategy against a saved dataset.
@@ -486,6 +737,16 @@ export interface components {
             strategy_id?: string | null;
             /** Dataset Id */
             dataset_id: string;
+            /**
+             * Dataset Version Id
+             * @description Explicit immutable dataset version to run against.
+             */
+            dataset_version_id?: string | null;
+            /**
+             * Dataset Version
+             * @description Dataset version number. Omitted uses the current version.
+             */
+            dataset_version?: number | null;
             /**
              * Initial Capital
              * @default 100000
@@ -515,6 +776,61 @@ export interface components {
             strategy_params?: {
                 [key: string]: boolean | number | string;
             } | null;
+            /**
+             * Max Bars
+             * @description Replay only the first N bars. Useful for quick smoke tests.
+             */
+            max_bars?: number | null;
+        };
+        /**
+         * BacktestJobResultRead
+         * @description What a finished backtest job hands back: a receipt, not the result.
+         *
+         *     A job record lives in memory for the process lifetime and is re-serialised
+         *     on *every* progress poll, so its payload has to be bounded. The replay
+         *     itself is already persisted - ``run_id`` is the durable handle, and the
+         *     run detail and paginated event endpoints serve the parts that scale with
+         *     the dataset (candles, trades, orders, the explainability log).
+         *
+         *     What stays here is what the run form needs to say "done, and here is what
+         *     happened" without a second request: the headline counts, and any warnings
+         *     or errors the trader must not have to click through to discover.
+         */
+        BacktestJobResultRead: {
+            /** Run Id */
+            run_id: string;
+            /** Dataset Version Id */
+            dataset_version_id?: string | null;
+            /** Dataset Version Number */
+            dataset_version_number?: number | null;
+            /** Dataset Fingerprint */
+            dataset_fingerprint?: string | null;
+            /** Completed */
+            completed: boolean;
+            /** Bars Processed */
+            bars_processed: number;
+            /** Execution Time Ms */
+            execution_time_ms: number;
+            /** Trade Count */
+            trade_count: number;
+            /** Final Cash */
+            final_cash: number;
+            /** Position Closed */
+            position_closed: boolean;
+            /** @default trades_only */
+            explain_level: components["schemas"]["ExplainLevel"];
+            /** Warnings */
+            warnings: string[];
+            /** Errors */
+            errors: string[];
+        };
+        /**
+         * BacktestJobSubmitRead
+         * @description Accepted backtest job handle.
+         */
+        BacktestJobSubmitRead: {
+            /** Job Id */
+            job_id: string;
         };
         /** BacktestRunListItem */
         BacktestRunListItem: {
@@ -530,6 +846,16 @@ export interface components {
             dataset_id: string;
             /** Dataset Name */
             dataset_name: string;
+            /** Dataset Version Id */
+            dataset_version_id?: string | null;
+            /** Dataset Version Number */
+            dataset_version_number?: number | null;
+            /** Dataset Import Id */
+            dataset_import_id?: string | null;
+            /** Dataset Imported At */
+            dataset_imported_at?: string | null;
+            /** Dataset Quality Score */
+            dataset_quality_score?: number | null;
             /**
              * Execution Completed At
              * Format: date-time
@@ -541,6 +867,24 @@ export interface components {
             win_rate_pct: number;
             /** Trade Count */
             trade_count: number;
+            /** Total Return Pct */
+            total_return_pct?: number | null;
+            /** Cagr Pct */
+            cagr_pct?: number | null;
+            /** Max Drawdown Pct */
+            max_drawdown_pct?: number | null;
+            /** Sharpe */
+            sharpe?: number | null;
+            /** Sortino */
+            sortino?: number | null;
+            /** Calmar */
+            calmar?: number | null;
+            /** Profit Factor */
+            profit_factor?: number | null;
+            /** Expectancy */
+            expectancy?: number | null;
+            /** Exposure Pct */
+            exposure_pct?: number | null;
             status: components["schemas"]["BacktestRunStatus"];
             /** Experiment Name */
             experiment_name: string | null;
@@ -564,6 +908,16 @@ export interface components {
             dataset_id: string;
             /** Dataset Name */
             dataset_name: string;
+            /** Dataset Version Id */
+            dataset_version_id?: string | null;
+            /** Dataset Version Number */
+            dataset_version_number?: number | null;
+            /** Dataset Import Id */
+            dataset_import_id?: string | null;
+            /** Dataset Imported At */
+            dataset_imported_at?: string | null;
+            /** Dataset Quality Score */
+            dataset_quality_score?: number | null;
             /** Engine Version */
             engine_version: string;
             /**
@@ -613,6 +967,7 @@ export interface components {
             /** Position Closed */
             position_closed: boolean;
             metrics: components["schemas"]["PerformanceMetricsRead"];
+            analytics: components["schemas"]["AnalyticsReportRead"];
             /** Equity History */
             equity_history: components["schemas"]["EquityPointRead"][];
             /** Entry Markers */
@@ -633,8 +988,8 @@ export interface components {
             errors: string[];
             /** Completed */
             completed: boolean;
-            /** Explain Events */
-            explain_events?: components["schemas"]["ExplainEventRead"][];
+            /** Lifecycle Events */
+            lifecycle_events?: components["schemas"]["ExplainEventRead"][];
             /** @default trades_only */
             explain_level: components["schemas"]["ExplainLevel"];
             status: components["schemas"]["BacktestRunStatus"];
@@ -906,7 +1261,49 @@ export interface components {
             symbol: string;
             /** Exchange */
             exchange: string;
-            timeframe: components["schemas"]["Timeframe"];
+            timeframe?: components["schemas"]["Timeframe"] | null;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Session Open
+             * @default 09:15
+             */
+            session_open: string;
+            /**
+             * Session Close
+             * @default 15:30
+             */
+            session_close: string;
+            /** Column Mapping */
+            column_mapping?: string | null;
+        };
+        /** Body_import_dataset_version_api_v1_datasets__dataset_id__import_post */
+        Body_import_dataset_version_api_v1_datasets__dataset_id__import_post: {
+            /** File */
+            file: string;
+            /** Timezone */
+            timezone?: string | null;
+            /**
+             * Session Open
+             * @default 09:15
+             */
+            session_open: string;
+            /**
+             * Session Close
+             * @default 15:30
+             */
+            session_close: string;
+            /** Column Mapping */
+            column_mapping?: string | null;
+            timeframe?: components["schemas"]["Timeframe"] | null;
+        };
+        /** Body_preview_import_api_v1_datasets_import_preview_post */
+        Body_preview_import_api_v1_datasets_import_preview_post: {
+            /** File */
+            file: string;
         };
         /** CandleRead */
         CandleRead: {
@@ -932,6 +1329,70 @@ export interface components {
             /** Changes */
             changes: string[];
         };
+        /** CleaningActionRead */
+        CleaningActionRead: {
+            /** Action */
+            action: string;
+            /** Count */
+            count: number;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
+        /** CleaningReportRead */
+        CleaningReportRead: {
+            /** Actions */
+            actions?: components["schemas"]["CleaningActionRead"][];
+        };
+        /** ComparedRunSummaryRead */
+        ComparedRunSummaryRead: {
+            /** Run Id */
+            run_id: string;
+            /** Label */
+            label: string;
+            /** Strategy Name */
+            strategy_name: string;
+            /** Dataset Name */
+            dataset_name: string;
+            /** Experiment Name */
+            experiment_name: string | null;
+        };
+        /**
+         * ComparisonReportRead
+         * @description Side-by-side comparison of multiple backtest runs.
+         */
+        ComparisonReportRead: {
+            /** Comparison Version */
+            comparison_version: string;
+            /** Run Count */
+            run_count: number;
+            /** Runs */
+            runs: components["schemas"]["ComparedRunSummaryRead"][];
+            /** Metric Rows */
+            metric_rows: components["schemas"]["MetricComparisonRowRead"][];
+            /** Insights */
+            insights: components["schemas"]["ResearchInsightRead"][];
+            /** Strategy Rows */
+            strategy_rows: components["schemas"]["StrategyComparisonRowRead"][];
+            /** Strategy Parameter Diffs */
+            strategy_parameter_diffs: components["schemas"]["StrategyParameterDiffRead"][];
+            /** Dataset Rows */
+            dataset_rows: components["schemas"]["DatasetComparisonRowRead"][];
+            /** Execution Rows */
+            execution_rows: components["schemas"]["ExecutionComparisonRowRead"][];
+            /** Equity Overlays */
+            equity_overlays: components["schemas"]["EquityOverlayRead"][];
+            /** Drawdown Overlays */
+            drawdown_overlays: components["schemas"]["DrawdownOverlayRead"][];
+            /** Monthly Returns Overlays */
+            monthly_returns_overlays: components["schemas"]["MonthlyReturnOverlayRead"][];
+            /** Datasets Differ */
+            datasets_differ: boolean;
+            /** Strategies Differ */
+            strategies_differ: boolean;
+        };
         /** ConditionTraceRead */
         ConditionTraceRead: {
             /** Name */
@@ -943,6 +1404,92 @@ export interface components {
             /** Passed */
             passed: boolean;
         };
+        /** DailyPnlPointRead */
+        DailyPnlPointRead: {
+            /** Day Ms */
+            day_ms: number;
+            /** Pnl */
+            pnl: number;
+            /** Return Pct */
+            return_pct: number;
+            /** Equity */
+            equity: number;
+        };
+        /** DataImportRead */
+        DataImportRead: {
+            /** Id */
+            id: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Version Id */
+            dataset_version_id?: string | null;
+            /** Filename */
+            filename: string;
+            /** File Hash */
+            file_hash: string;
+            /** Rows Read */
+            rows_read: number;
+            /** Rows Written */
+            rows_written: number;
+            /** Rows Rejected */
+            rows_rejected: number;
+            /** Duplicates Removed */
+            duplicates_removed: number;
+            /** Gaps Detected */
+            gaps_detected: number;
+            /** Quality Score */
+            quality_score: number | null;
+            status: components["schemas"]["ImportStatus"];
+            /** Error Message */
+            error_message: string | null;
+            report?: components["schemas"]["PipelineReportRead"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** DatasetBacktestReference */
+        DatasetBacktestReference: {
+            /** Run Id */
+            run_id: string;
+            /** Strategy Name */
+            strategy_name: string;
+            /** Dataset Version Number */
+            dataset_version_number?: number | null;
+            /**
+             * Execution Completed At
+             * Format: date-time
+             */
+            execution_completed_at: string;
+        };
+        /** DatasetComparisonRowRead */
+        DatasetComparisonRowRead: {
+            /** Run Id */
+            run_id: string;
+            /** Run Label */
+            run_label: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Name */
+            dataset_name: string;
+            /** Dataset Version Number */
+            dataset_version_number: number | null;
+            /** Dataset Hash */
+            dataset_hash: string;
+            /** Dataset Imported At */
+            dataset_imported_at: string | null;
+            /** Dataset Quality Score */
+            dataset_quality_score: number | null;
+            /** Differs From Baseline */
+            differs_from_baseline: boolean;
+        };
+        /**
+         * DatasetLifecycle
+         * @description Whether a dataset is selectable, archived, or removed.
+         * @enum {string}
+         */
+        DatasetLifecycle: "active" | "archived" | "deleted";
         /** DatasetPreview */
         DatasetPreview: {
             /** Rows */
@@ -961,14 +1508,39 @@ export interface components {
             timeframe: components["schemas"]["Timeframe"];
             /** File Path */
             file_path: string;
+            /** Original Filename */
+            original_filename?: string | null;
+            /** File Hash */
+            file_hash?: string | null;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            detected_timeframe?: components["schemas"]["Timeframe"] | null;
+            /** Quality Score */
+            quality_score?: number | null;
             /** Row Count */
             row_count: number;
             /** Start Date */
             start_date: string | null;
             /** End Date */
             end_date: string | null;
+            status: components["schemas"]["DatasetStatus"];
+            /** @default active */
+            lifecycle: components["schemas"]["DatasetLifecycle"];
             import_status: components["schemas"]["ImportStatus"];
+            /** Current Version Id */
+            current_version_id?: string | null;
+            /** Current Version Number */
+            current_version_number?: number | null;
+            /**
+             * Version Count
+             * @default 0
+             */
+            version_count: number;
             validation_report: components["schemas"]["DatasetValidationReport"] | null;
+            pipeline_report?: components["schemas"]["PipelineReportRead"] | null;
             /** Import Error */
             import_error: string | null;
             /**
@@ -982,7 +1554,54 @@ export interface components {
              */
             updated_at: string;
         };
-        /** DatasetValidationReport */
+        /** DatasetReferencesRead */
+        DatasetReferencesRead: {
+            /** Reference Count */
+            reference_count: number;
+            /** Backtest Runs */
+            backtest_runs: components["schemas"]["DatasetBacktestReference"][];
+        };
+        /** DatasetStatisticsRead */
+        DatasetStatisticsRead: {
+            /** Date Range Start */
+            date_range_start: string | null;
+            /** Date Range End */
+            date_range_end: string | null;
+            /** Total Bars */
+            total_bars: number;
+            /** Trading Days */
+            trading_days: number;
+            /** Average Daily Bars */
+            average_daily_bars: number;
+            /** Min Price */
+            min_price: number | null;
+            /** Max Price */
+            max_price: number | null;
+            /** Average Volume */
+            average_volume: number | null;
+            /** Timeframe */
+            timeframe: string | null;
+            /** Instrument */
+            instrument: string;
+            /** Missing Bars */
+            missing_bars: number;
+            /** Duplicate Bars */
+            duplicate_bars: number;
+            /** Gap Percentage */
+            gap_percentage: number;
+            /** Quality Score */
+            quality_score: number;
+        };
+        /**
+         * DatasetStatus
+         * @description Import/validation state of a dataset aggregate (current version drives the state).
+         * @enum {string}
+         */
+        DatasetStatus: "uploaded" | "validating" | "valid" | "invalid" | "failed";
+        /**
+         * DatasetValidationReport
+         * @description Row-level validation summary (nested inside the full pipeline report).
+         */
         DatasetValidationReport: {
             /** Total Rows */
             total_rows: number;
@@ -996,6 +1615,36 @@ export interface components {
             duplicate_timestamps: number;
             /** Missing Timestamps */
             missing_timestamps: number;
+            /**
+             * Out Of Order Timestamps
+             * @default 0
+             */
+            out_of_order_timestamps: number;
+            /**
+             * Ohlc Violations
+             * @default 0
+             */
+            ohlc_violations: number;
+            /**
+             * Negative Volumes
+             * @default 0
+             */
+            negative_volumes: number;
+            /**
+             * Non Positive Prices
+             * @default 0
+             */
+            non_positive_prices: number;
+            /**
+             * Nan Values
+             * @default 0
+             */
+            nan_values: number;
+            /**
+             * Infinity Values
+             * @default 0
+             */
+            infinity_values: number;
             /** Start Date */
             start_date: string | null;
             /** End Date */
@@ -1010,6 +1659,47 @@ export interface components {
              * @default []
              */
             gap_samples: string[];
+        };
+        /** DatasetVersionRead */
+        DatasetVersionRead: {
+            /** Id */
+            id: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Version Number */
+            version_number: number;
+            /** Data Import Id */
+            data_import_id?: string | null;
+            /** File Path */
+            file_path: string;
+            /** File Size Bytes */
+            file_size_bytes: number;
+            /** Parquet Hash */
+            parquet_hash: string;
+            /** Fingerprint */
+            fingerprint: string;
+            /** Row Count */
+            row_count: number;
+            /** Start Date */
+            start_date: string | null;
+            /** End Date */
+            end_date: string | null;
+            /** Timezone */
+            timezone: string;
+            detected_timeframe?: components["schemas"]["Timeframe"] | null;
+            /** Quality Score */
+            quality_score?: number | null;
+            /** Status */
+            status: string;
+            /** Error Message */
+            error_message?: string | null;
+            validation_report?: components["schemas"]["DatasetValidationReport"] | null;
+            pipeline_report?: components["schemas"]["PipelineReportRead"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** DeterminismCheckRead */
         DeterminismCheckRead: {
@@ -1056,6 +1746,39 @@ export interface components {
             /** Rules */
             rules: string[];
         };
+        /** DrawdownOverlayPointRead */
+        DrawdownOverlayPointRead: {
+            /** Ts */
+            ts: number;
+            /** Depth */
+            depth: number;
+            /** Depth Pct */
+            depth_pct: number;
+        };
+        /** DrawdownOverlayRead */
+        DrawdownOverlayRead: {
+            /** Run Id */
+            run_id: string;
+            /** Run Label */
+            run_label: string;
+            /** Points */
+            points: components["schemas"]["DrawdownOverlayPointRead"][];
+            /** Max Drawdown Start Ts */
+            max_drawdown_start_ts: number | null;
+            /** Max Drawdown Trough Ts */
+            max_drawdown_trough_ts: number | null;
+            /** Max Drawdown Recovery Ts */
+            max_drawdown_recovery_ts: number | null;
+        };
+        /** DrawdownPointRead */
+        DrawdownPointRead: {
+            /** Ts */
+            ts: number;
+            /** Depth */
+            depth: number;
+            /** Depth Pct */
+            depth_pct: number;
+        };
         /** EngineValidationReportRead */
         EngineValidationReportRead: {
             /** Engine Version */
@@ -1076,6 +1799,33 @@ export interface components {
             /** Dataset Validation Summary */
             dataset_validation_summary: string[];
         };
+        /** EquityCurvePointRead */
+        EquityCurvePointRead: {
+            /** Ts */
+            ts: number;
+            /** Equity */
+            equity: number;
+            /** Realised */
+            realised: number;
+        };
+        /** EquityOverlayPointRead */
+        EquityOverlayPointRead: {
+            /** Ts */
+            ts: number;
+            /** Equity */
+            equity: number;
+            /** Realised */
+            realised: number;
+        };
+        /** EquityOverlayRead */
+        EquityOverlayRead: {
+            /** Run Id */
+            run_id: string;
+            /** Run Label */
+            run_label: string;
+            /** Points */
+            points: components["schemas"]["EquityOverlayPointRead"][];
+        };
         /** EquityPointRead */
         EquityPointRead: {
             /** Trade Number */
@@ -1085,48 +1835,38 @@ export interface components {
             /** Timestamp */
             timestamp: number;
         };
-        /**
-         * ExecutionResultRead
-         * @description Outcome of one in-process replay with performance analytics.
-         */
-        ExecutionResultRead: {
+        /** ExecutionComparisonRowRead */
+        ExecutionComparisonRowRead: {
             /** Run Id */
-            run_id?: string | null;
-            /** Completed */
-            completed: boolean;
-            /** Bars Processed */
-            bars_processed: number;
+            run_id: string;
+            /** Run Label */
+            run_label: string;
+            /** Experiment Name */
+            experiment_name: string | null;
+            /** Engine Version */
+            engine_version: string;
+            /**
+             * Execution Started At
+             * Format: date-time
+             */
+            execution_started_at: string;
+            /**
+             * Execution Completed At
+             * Format: date-time
+             */
+            execution_completed_at: string;
             /** Execution Time Ms */
             execution_time_ms: number;
-            /** Errors */
-            errors: string[];
-            /** Warnings */
-            warnings: string[];
-            /** Strategy Logs */
-            strategy_logs: string[];
-            /** Orders */
-            orders: components["schemas"]["OrderRead"][];
-            /** Trades */
-            trades: components["schemas"]["TradeRead"][];
-            /** Final Cash */
-            final_cash: number;
-            /** Position Closed */
-            position_closed: boolean;
+            /** Bars Processed */
+            bars_processed: number;
             /** Trade Count */
             trade_count: number;
-            metrics: components["schemas"]["PerformanceMetricsRead"];
-            /** Equity History */
-            equity_history: components["schemas"]["EquityPointRead"][];
-            /** Candles */
-            candles: components["schemas"]["CandleRead"][];
-            /** Entry Markers */
-            entry_markers: components["schemas"]["TradeMarkerRead"][];
-            /** Exit Markers */
-            exit_markers: components["schemas"]["TradeMarkerRead"][];
-            /** Explain Events */
-            explain_events?: components["schemas"]["ExplainEventRead"][];
-            /** @default trades_only */
-            explain_level: components["schemas"]["ExplainLevel"];
+            /** Initial Capital */
+            initial_capital: number;
+            /** Commission */
+            commission: number;
+            /** Slippage */
+            slippage: number;
         };
         /** ExplainEventRead */
         ExplainEventRead: {
@@ -1212,6 +1952,39 @@ export interface components {
             /** Count */
             count: number;
         };
+        /** GapReportRead */
+        GapReportRead: {
+            /** Expected Bars */
+            expected_bars: number;
+            /** Actual Bars */
+            actual_bars: number;
+            /** Missing Bars */
+            missing_bars: number;
+            /** Duplicate Bars */
+            duplicate_bars: number;
+            /**
+             * Large Jumps
+             * @default 0
+             */
+            large_jumps: number;
+            /**
+             * Partial Trading Days
+             * @default 0
+             */
+            partial_trading_days: number;
+            /** Gap Percentage */
+            gap_percentage: number;
+            /**
+             * Missing Timestamps
+             * @default []
+             */
+            missing_timestamps: string[];
+            /**
+             * Large Jump Samples
+             * @default []
+             */
+            large_jump_samples: string[];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1232,12 +2005,72 @@ export interface components {
              */
             database: "ok" | "error";
         };
+        /** ImportPreviewResponse */
+        ImportPreviewResponse: {
+            /** Columns */
+            columns: string[];
+            /** Suggested Mapping */
+            suggested_mapping: {
+                [key: string]: string;
+            };
+            /** Sample Rows */
+            sample_rows: {
+                [key: string]: unknown;
+            }[];
+            /** Row Count Estimate */
+            row_count_estimate: number;
+        };
         /**
          * ImportStatus
          * @description Lifecycle of a dataset's CSV import (ARCHITECTURE.md 2.3).
          * @enum {string}
          */
         ImportStatus: "processing" | "completed" | "failed";
+        /**
+         * JobRead
+         * @description Background job state for polling.
+         */
+        JobRead: {
+            /** Id */
+            id: string;
+            job_type: components["schemas"]["JobType"];
+            status: components["schemas"]["JobStatus"];
+            /** Progress Pct */
+            progress_pct: number;
+            /**
+             * Progress Message
+             * @default
+             */
+            progress_message: string;
+            /** Bars Processed */
+            bars_processed?: number | null;
+            /** Total Bars */
+            total_bars?: number | null;
+            result?: components["schemas"]["BacktestJobResultRead"] | null;
+            /** Error Message */
+            error_message?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+        };
+        /**
+         * JobStatus
+         * @description Lifecycle of a background job.
+         * @enum {string}
+         */
+        JobStatus: "pending" | "running" | "completed" | "failed" | "cancelled";
+        /**
+         * JobType
+         * @description Kinds of work the in-process job runner handles.
+         * @enum {string}
+         */
+        JobType: "backtest";
         /**
          * LibraryFacetsRead
          * @description Filter-rail counts for the Strategy Library.
@@ -1400,6 +2233,95 @@ export interface components {
          * @enum {string}
          */
         MarketType: "equity" | "futures" | "options" | "fx" | "crypto" | "index";
+        /**
+         * MetricCategory
+         * @description Which group a metric belongs to. Values match ``AnalyticsReport`` fields.
+         * @enum {string}
+         */
+        MetricCategory: "returns" | "risk" | "risk_adjusted" | "trades" | "portfolio" | "statistics";
+        /** MetricComparisonRowRead */
+        MetricComparisonRowRead: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            category: components["schemas"]["MetricCategory"];
+            format: components["schemas"]["MetricFormat"];
+            /** Precision */
+            precision: number;
+            /** Description */
+            description: string;
+            /** Higher Is Better */
+            higher_is_better: boolean | null;
+            /** Values */
+            values: (number | null)[];
+            /** Best Run Index */
+            best_run_index: number | null;
+            /** Worst Run Index */
+            worst_run_index: number | null;
+            /** Is Tie */
+            is_tie: boolean;
+            /** Spread */
+            spread: number | null;
+            /** Spread Pct */
+            spread_pct: number | null;
+        };
+        /**
+         * MetricFormat
+         * @description How a value should be rendered. The frontend switches on this.
+         * @enum {string}
+         */
+        MetricFormat: "currency" | "percent" | "ratio" | "integer" | "duration" | "number";
+        /**
+         * MetricValueRead
+         * @description One metric with everything needed to display or compare it.
+         */
+        MetricValueRead: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: number | null;
+            format: components["schemas"]["MetricFormat"];
+            /** Precision */
+            precision: number;
+            category: components["schemas"]["MetricCategory"];
+            /** Description */
+            description: string;
+            /** Higher Is Better */
+            higher_is_better: boolean | null;
+            /** Is Headline */
+            is_headline: boolean;
+        };
+        /** MonthlyReturnOverlayRead */
+        MonthlyReturnOverlayRead: {
+            /** Run Id */
+            run_id: string;
+            /** Run Label */
+            run_label: string;
+            /** Returns */
+            returns: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** MonthlyReturnRead */
+        MonthlyReturnRead: {
+            /** Year */
+            year: number;
+            /** Month */
+            month: number;
+            /** Return Pct */
+            return_pct: number;
+            /** Pnl */
+            pnl: number;
+            /** Start Equity */
+            start_equity: number;
+            /** End Equity */
+            end_equity: number;
+            /** Trading Days */
+            trading_days: number;
+        };
         /** OrderRead */
         OrderRead: {
             /** Id */
@@ -1668,6 +2590,71 @@ export interface components {
             return_pct: number;
         };
         /**
+         * PipelineReportRead
+         * @description Full import pipeline report persisted on each dataset.
+         */
+        PipelineReportRead: {
+            validation: components["schemas"]["DatasetValidationReport"];
+            cleaning?: components["schemas"]["CleaningReportRead"];
+            session?: components["schemas"]["SessionReportRead"];
+            gaps?: components["schemas"]["GapReportRead"] | null;
+            timeframe?: components["schemas"]["TimeframeReportRead"] | null;
+            statistics?: components["schemas"]["DatasetStatisticsRead"] | null;
+            /**
+             * Quality Score
+             * @default 0
+             */
+            quality_score: number;
+            /**
+             * Rejected
+             * @default false
+             */
+            rejected: boolean;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+        };
+        /** PortfolioMetricsRead */
+        PortfolioMetricsRead: {
+            /** Capital Utilisation Pct */
+            capital_utilisation_pct: number;
+            /** Peak Capital Utilisation Pct */
+            peak_capital_utilisation_pct: number;
+            /** Cash Utilisation Pct */
+            cash_utilisation_pct: number;
+        };
+        /**
+         * PortfolioSeriesRead
+         * @description Curves and calendar tables.
+         *
+         *     Per-bar curves are capped in length for transport; every scalar metric is
+         *     still computed from the full series, and the extremes (equity peak, equity
+         *     trough, deepest drawdown) are always among the emitted points, so a chart can
+         *     never contradict a headline number. ``curves_downsampled`` says whether any
+         *     thinning happened.
+         */
+        PortfolioSeriesRead: {
+            /** Equity Curve */
+            equity_curve: components["schemas"]["EquityCurvePointRead"][];
+            /** Drawdown Curve */
+            drawdown_curve: components["schemas"]["DrawdownPointRead"][];
+            /** Daily Pnl */
+            daily_pnl: components["schemas"]["DailyPnlPointRead"][];
+            /** Rolling Returns */
+            rolling_returns: components["schemas"]["RollingReturnPointRead"][];
+            /** Monthly Returns */
+            monthly_returns: components["schemas"]["MonthlyReturnRead"][];
+            /** Yearly Returns */
+            yearly_returns: components["schemas"]["YearlyReturnRead"][];
+            /** Max Drawdown Start Ts */
+            max_drawdown_start_ts: number | null;
+            /** Max Drawdown Trough Ts */
+            max_drawdown_trough_ts: number | null;
+            /** Max Drawdown Recovery Ts */
+            max_drawdown_recovery_ts: number | null;
+            /** Curves Downsampled */
+            curves_downsampled: boolean;
+        };
+        /**
          * PositionSide
          * @description Direction of an open position.
          * @enum {string}
@@ -1679,12 +2666,127 @@ export interface components {
          * @enum {string}
          */
         Priority: "low" | "medium" | "high";
+        /** ResearchInsightRead */
+        ResearchInsightRead: {
+            /** Metric Key */
+            metric_key: string;
+            /** Metric Label */
+            metric_label: string;
+            /** Run Index */
+            run_index: number;
+            /** Run Id */
+            run_id: string;
+            /** Run Label */
+            run_label: string;
+            /** Value */
+            value: number;
+            /** Message */
+            message: string;
+        };
+        /** ReturnMetricsRead */
+        ReturnMetricsRead: {
+            /** Net Profit */
+            net_profit: number;
+            /** Gross Profit */
+            gross_profit: number;
+            /** Gross Loss */
+            gross_loss: number;
+            /** Total Return Pct */
+            total_return_pct: number;
+            /** Annualised Return Pct */
+            annualised_return_pct: number | null;
+            /** Cagr Pct */
+            cagr_pct: number | null;
+            /** Average Trade */
+            average_trade: number;
+            /** Average Win */
+            average_win: number;
+            /** Average Loss */
+            average_loss: number;
+            /** Profit Factor */
+            profit_factor: number | null;
+            /** Expectancy */
+            expectancy: number;
+            /** Recovery Factor */
+            recovery_factor: number | null;
+            /** Payoff Ratio */
+            payoff_ratio: number | null;
+            /** Commission Paid */
+            commission_paid: number;
+            /** Slippage Cost */
+            slippage_cost: number;
+            /** Final Equity */
+            final_equity: number;
+        };
+        /** RiskAdjustedMetricsRead */
+        RiskAdjustedMetricsRead: {
+            /** Sharpe Ratio */
+            sharpe_ratio: number | null;
+            /** Sortino Ratio */
+            sortino_ratio: number | null;
+            /** Calmar Ratio */
+            calmar_ratio: number | null;
+            /** Mar Ratio */
+            mar_ratio: number | null;
+            /** Information Ratio */
+            information_ratio: number | null;
+            /** Treynor Ratio */
+            treynor_ratio: number | null;
+        };
         /**
          * RiskLevel
          * @description Declared aggressiveness of a strategy, for library filtering.
          * @enum {string}
          */
         RiskLevel: "low" | "medium" | "high";
+        /** RiskMetricsRead */
+        RiskMetricsRead: {
+            /** Max Drawdown */
+            max_drawdown: number;
+            /** Max Drawdown Pct */
+            max_drawdown_pct: number;
+            /** Average Drawdown */
+            average_drawdown: number;
+            /** Average Drawdown Pct */
+            average_drawdown_pct: number;
+            /** Longest Drawdown Ms */
+            longest_drawdown_ms: number;
+            /** Longest Drawdown Bars */
+            longest_drawdown_bars: number;
+            /** Drawdown Episodes */
+            drawdown_episodes: number;
+            /** Ulcer Index */
+            ulcer_index: number | null;
+            /** Volatility Pct */
+            volatility_pct: number | null;
+            /** Annualised Volatility Pct */
+            annualised_volatility_pct: number | null;
+            /** Downside Deviation Pct */
+            downside_deviation_pct: number | null;
+            /** Value At Risk Pct */
+            value_at_risk_pct: number | null;
+            /** Conditional Value At Risk Pct */
+            conditional_value_at_risk_pct: number | null;
+            /** Exposure Pct */
+            exposure_pct: number;
+            /** Time In Market Pct */
+            time_in_market_pct: number;
+        };
+        /** RollingReturnPointRead */
+        RollingReturnPointRead: {
+            /** Day Ms */
+            day_ms: number;
+            /** Return Pct */
+            return_pct: number;
+        };
+        /**
+         * RunComparisonRequest
+         * @description Compare 2-10 completed runs side by side.
+         */
+        RunComparisonRequest: {
+            /** Run Ids */
+            run_ids: string[];
+        };
         /** ScenarioRunResultRead */
         ScenarioRunResultRead: {
             /** Name */
@@ -1705,6 +2807,50 @@ export interface components {
             differences: string[];
             /** Result Hash */
             result_hash: string;
+        };
+        /** SessionReportRead */
+        SessionReportRead: {
+            /**
+             * Missing Opening Candles
+             * @default 0
+             */
+            missing_opening_candles: number;
+            /**
+             * Missing Closing Candles
+             * @default 0
+             */
+            missing_closing_candles: number;
+            /**
+             * Candles Outside Session
+             * @default 0
+             */
+            candles_outside_session: number;
+            /**
+             * Unexpected Weekend Bars
+             * @default 0
+             */
+            unexpected_weekend_bars: number;
+            /**
+             * Unexpected Holiday Bars
+             * @default 0
+             */
+            unexpected_holiday_bars: number;
+            /**
+             * Outside Session Samples
+             * @default []
+             */
+            outside_session_samples: string[];
+        };
+        /** StatisticalMetricsRead */
+        StatisticalMetricsRead: {
+            /** Sqn */
+            sqn: number | null;
+            /** Kelly Pct */
+            kelly_pct: number | null;
+            /** Z Score */
+            z_score: number | null;
+            /** Edge Ratio */
+            edge_ratio: number | null;
         };
         /**
          * StrategyCategory
@@ -1744,6 +2890,29 @@ export interface components {
         StrategyCodeValidateRequest: {
             /** Code */
             code: string;
+        };
+        /** StrategyComparisonRowRead */
+        StrategyComparisonRowRead: {
+            /** Run Id */
+            run_id: string;
+            /** Run Label */
+            run_label: string;
+            /** Strategy Id */
+            strategy_id: string;
+            /** Strategy Name */
+            strategy_name: string;
+            /** Strategy Hash */
+            strategy_hash: string;
+            /** Library Strategy Id */
+            library_strategy_id: string | null;
+            /** Library Strategy Version */
+            library_strategy_version: string | null;
+            /** Strategy Params */
+            strategy_params: {
+                [key: string]: unknown;
+            } | null;
+            /** Differs From Baseline */
+            differs_from_baseline: boolean;
         };
         /** StrategyCreate */
         StrategyCreate: {
@@ -1851,6 +3020,15 @@ export interface components {
             params?: {
                 [key: string]: boolean | number | string;
             };
+        };
+        /** StrategyParameterDiffRead */
+        StrategyParameterDiffRead: {
+            /** Name */
+            name: string;
+            /** Values */
+            values: unknown[];
+            /** Differs */
+            differs: boolean;
         };
         /** StrategyRead */
         StrategyRead: {
@@ -1996,7 +3174,23 @@ export interface components {
          * @description Canonical timeframe strings (ARCHITECTURE.md 8).
          * @enum {string}
          */
-        Timeframe: "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "1d" | "1w";
+        Timeframe: "1m" | "3m" | "5m" | "10m" | "15m" | "30m" | "1h" | "2h" | "4h" | "1d" | "1w";
+        /** TimeframeReportRead */
+        TimeframeReportRead: {
+            detected?: components["schemas"]["Timeframe"] | null;
+            /**
+             * Is Consistent
+             * @default true
+             */
+            is_consistent: boolean;
+            /** Dominant Interval Ms */
+            dominant_interval_ms?: number | null;
+            /**
+             * Inconsistent Intervals
+             * @default 0
+             */
+            inconsistent_intervals: number;
+        };
         /** TradeInspectionRead */
         TradeInspectionRead: {
             summary: components["schemas"]["TradeSummaryRead"];
@@ -2016,6 +3210,41 @@ export interface components {
             side: components["schemas"]["PositionSide"];
             /** Marker Kind */
             marker_kind: string;
+        };
+        /** TradeMetricsRead */
+        TradeMetricsRead: {
+            /** Total Trades */
+            total_trades: number;
+            /** Winning Trades */
+            winning_trades: number;
+            /** Losing Trades */
+            losing_trades: number;
+            /** Breakeven Trades */
+            breakeven_trades: number;
+            /** Win Rate Pct */
+            win_rate_pct: number;
+            /** Loss Rate Pct */
+            loss_rate_pct: number;
+            /** Longest Win Streak */
+            longest_win_streak: number;
+            /** Longest Loss Streak */
+            longest_loss_streak: number;
+            /** Average Holding Time Ms */
+            average_holding_time_ms: number;
+            /** Max Holding Time Ms */
+            max_holding_time_ms: number;
+            /** Min Holding Time Ms */
+            min_holding_time_ms: number;
+            /** Average Bars Held */
+            average_bars_held: number;
+            /** Average Mae */
+            average_mae: number | null;
+            /** Average Mfe */
+            average_mfe: number | null;
+            /** Largest Winner */
+            largest_winner: number;
+            /** Largest Loser */
+            largest_loser: number;
         };
         /**
          * TradeOutcome
@@ -2171,6 +3400,21 @@ export interface components {
          * @enum {string}
          */
         ValidationSeverity: "error" | "warning";
+        /** YearlyReturnRead */
+        YearlyReturnRead: {
+            /** Year */
+            year: number;
+            /** Return Pct */
+            return_pct: number;
+            /** Pnl */
+            pnl: number;
+            /** Start Equity */
+            start_equity: number;
+            /** End Equity */
+            end_equity: number;
+            /** Trading Days */
+            trading_days: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -2731,6 +3975,39 @@ export interface operations {
             };
         };
     };
+    preview_import_api_v1_datasets_import_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_preview_import_api_v1_datasets_import_preview_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     import_dataset_api_v1_datasets_import_post: {
         parameters: {
             query?: never;
@@ -2824,6 +4101,261 @@ export interface operations {
             };
         };
     };
+    list_dataset_versions_api_v1_datasets__dataset_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dataset_version_api_v1_datasets__dataset_id__versions__version_number__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_dataset_version_api_v1_datasets__dataset_id__versions__version_number__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_dataset_version_api_v1_datasets__dataset_id__import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_dataset_version_api_v1_datasets__dataset_id__import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_dataset_imports_api_v1_datasets__dataset_id__imports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataImportRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dataset_import_api_v1_datasets__dataset_id__imports__import_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                import_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataImportRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dataset_references_api_v1_datasets__dataset_id__references_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetReferencesRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_dataset_api_v1_datasets__dataset_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     revalidate_dataset_api_v1_datasets__dataset_id__validate_post: {
         parameters: {
             query?: never;
@@ -2860,6 +4392,7 @@ export interface operations {
             query?: {
                 part?: "head" | "tail";
                 rows?: number;
+                version?: number | null;
             };
             header?: never;
             path: {
@@ -2898,7 +4431,7 @@ export interface operations {
                 status?: components["schemas"]["BacktestRunStatus"] | null;
                 date_from?: string | null;
                 date_to?: string | null;
-                sort?: "created_at" | "execution_completed_at" | "net_profit" | "trade_count";
+                sort?: "created_at" | "execution_completed_at" | "net_profit" | "trade_count" | "total_return_pct" | "cagr_pct" | "max_drawdown_pct" | "sharpe" | "sortino" | "calmar" | "profit_factor" | "win_rate_pct" | "expectancy" | "exposure_pct";
                 order?: "asc" | "desc";
                 limit?: number;
                 offset?: number;
@@ -2916,6 +4449,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_BacktestRunListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_backtest_runs_get_api_v1_backtests_runs_compare_get: {
+        parameters: {
+            query: {
+                run_ids: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonReportRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_backtest_runs_post_api_v1_backtests_runs_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunComparisonRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonReportRead"];
                 };
             };
             /** @description Validation Error */
@@ -3219,12 +4816,74 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacktestJobSubmitRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_api_v1_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExecutionResultRead"];
+                    "application/json": components["schemas"]["JobRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_job_api_v1_jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRead"];
                 };
             };
             /** @description Validation Error */

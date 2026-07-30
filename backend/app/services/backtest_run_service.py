@@ -8,8 +8,11 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import Session
 
+from app.analytics import AnalyticsReport
+from app.analytics.serialize import report_from_json
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.hashing import hash_file, hash_text
 from app.core.paths import DataPaths
@@ -26,14 +29,29 @@ from app.repositories.dataset_repo import DatasetRepository
 from app.repositories.dataset_version_repo import DatasetVersionRepository
 from app.repositories.strategy_code_repo import StrategyCodeRepository
 from app.repositories.strategy_repo import StrategyRepository
+from app.schemas.analytics import AnalyticsReportRead, analytics_report_read
 from app.schemas.backtest_run import BacktestRunResearchUpdate
+from app.services.analytics_service import AnalyticsService
 from app.services.execution_service import ResolvedDatasetVersion
 
+#: Sortable columns for the runs list. The analytics headline metrics are real
+#: columns (ARCHITECTURE.md 3.2), so sorting by Sharpe costs one index seek
+#: rather than parsing a JSON blob per row.
 ALLOWED_SORT_COLUMNS = {
     "created_at",
     "execution_completed_at",
     "net_profit",
     "trade_count",
+    "total_return_pct",
+    "cagr_pct",
+    "max_drawdown_pct",
+    "sharpe",
+    "sortino",
+    "calmar",
+    "profit_factor",
+    "win_rate_pct",
+    "expectancy",
+    "exposure_pct",
 }
 MAX_PAGE_SIZE = 100
 RESEARCH_TEXT_FIELDS = (
@@ -94,11 +112,32 @@ def _serialize_result(result: ExecutionResult, *, initial_capital: float) -> dic
     }
 
 
+def _headline_columns(report: AnalyticsReport) -> dict[str, float | None]:
+    """The denormalised subset of the report that lives in real columns.
+
+    Mapped explicitly rather than by name-matching so a rename in the analytics
+    layer cannot silently blank a column the runs list sorts on.
+    """
+    return {
+        "total_return_pct": report.returns.total_return_pct,
+        "cagr_pct": report.returns.cagr_pct,
+        "max_drawdown_pct": report.risk.max_drawdown_pct,
+        "sharpe": report.risk_adjusted.sharpe_ratio,
+        "sortino": report.risk_adjusted.sortino_ratio,
+        "calmar": report.risk_adjusted.calmar_ratio,
+        "profit_factor": report.returns.profit_factor,
+        "win_rate_pct": report.trades.win_rate_pct,
+        "expectancy": report.returns.expectancy,
+        "exposure_pct": report.risk.exposure_pct,
+    }
+
+
 class BacktestRunService:
     def __init__(self, session: Session, paths: DataPaths) -> None:
         self.session = session
         self.paths = paths
         self.repo = BacktestRunRepository(session)
+        self.analytics = AnalyticsService()
         self.strategy_repo = StrategyRepository(session)
         self.code_repo = StrategyCodeRepository(session)
         self.dataset_repo = DatasetRepository(session)
@@ -117,6 +156,7 @@ class BacktestRunService:
         library_strategy_version: str | None = None,
         strategy_params: Mapping[str, object] | None = None,
         dataset_version: ResolvedDatasetVersion | None = None,
+        analytics: AnalyticsReport | None = None,
     ) -> BacktestRun:
         """Persist one completed replay.
 
@@ -128,6 +168,11 @@ class BacktestRunService:
         The ``library_*`` fields record the same pinning as columns, so the
         result screen can link back to the library entry and re-run it without
         parsing the snapshot text.
+
+        ``analytics`` is the performance and risk report for this run. Passed in
+        rather than computed here so the caller that already needed it for its
+        response does not pay for it twice. Omitted, it is computed from the
+        result - a run is never stored without its report.
         """
         strategy = self.strategy_repo.get(strategy_id)
         if strategy is None:
@@ -164,6 +209,7 @@ class BacktestRunService:
                 quality_score=orm_version.quality_score,
                 data_import_id=orm_version.data_import_id,
                 imported_at=orm_version.created_at,
+                row_count=orm_version.row_count,
             )
         else:
             version = dataset_version
@@ -180,6 +226,9 @@ class BacktestRunService:
 
         completed_at = utcnow()
         payload = _serialize_result(result, initial_capital=config.initial_capital)
+        report = analytics or self.analytics.analyse_result(
+            result, initial_capital=config.initial_capital
+        )
         status = BacktestRunStatus.COMPLETED if result.completed else BacktestRunStatus.FAILED
         error_message = "; ".join(result.errors) if result.errors else None
 
@@ -189,9 +238,8 @@ class BacktestRunService:
             dataset_version_id=version.id,
             dataset_version_number=version.version_number,
             dataset_import_id=version.data_import_id,
-            dataset_imported_at=version.imported_at or (
-                data_import.created_at if data_import else None
-            ),
+            dataset_imported_at=version.imported_at
+            or (data_import.created_at if data_import else None),
             dataset_quality_score=version.quality_score,
             engine_version=ENGINE_VERSION,
             execution_started_at=started_at,
@@ -213,6 +261,7 @@ class BacktestRunService:
             final_cash=result.final_cash,
             position_closed=result.position_closed,
             metrics_json=_json_dumps(payload["metrics"]),
+            analytics_json=AnalyticsService.to_json(report),
             equity_history_json=_json_dumps(payload["equity_history"]),
             entry_markers_json=_json_dumps(payload["entry_markers"]),
             exit_markers_json=_json_dumps(payload["exit_markers"]),
@@ -226,6 +275,7 @@ class BacktestRunService:
             explain_level=str(payload["explain_level"]),
             status=status,
             error_message=error_message,
+            **_headline_columns(report),
         )
         self.repo.add(run)
         self.session.commit()
@@ -303,6 +353,41 @@ class BacktestRunService:
         if row is None:
             raise NotFoundError(f"Backtest run '{run_id}' not found")
         return row
+
+    def analytics_report_for(self, run: BacktestRun) -> AnalyticsReport:
+        """The run's analytics as the engine-side dataclass."""
+        if run.analytics_json:
+            try:
+                return report_from_json(run.analytics_json)
+            except (PydanticValidationError, KeyError, TypeError, ValueError):
+                pass
+
+        report = self.analytics.analyse_snapshot(
+            trades=json.loads(run.trades_json),
+            candles=json.loads(run.candles_json),
+            initial_capital=run.initial_capital,
+        )
+        run.analytics_json = AnalyticsService.to_json(report)
+        for column, value in _headline_columns(report).items():
+            setattr(run, column, value)
+        self.session.commit()
+        return report
+
+    def analytics_for(self, run: BacktestRun) -> AnalyticsReportRead:
+        """The run's performance and risk report.
+
+        Normally a straight read of the stored snapshot. For a run recorded
+        before analytics existed - or one whose stored report no longer matches
+        the current schema - the report is rebuilt from the trades and candles
+        that run already saved, then written back along with the headline
+        columns.
+
+        That write-back is a cache fill, not a mutation of history: the execution
+        snapshot (trades, orders, candles, events) is never touched, and the
+        rebuilt report is exactly what those immutable inputs produce. Without it
+        an old run would stay unsortable in the runs list forever.
+        """
+        return analytics_report_read(self.analytics_report_for(run))
 
     def list(
         self,

@@ -60,17 +60,52 @@ class BarIterator:
     later bar. That is the structural half of the lookahead prevention
     ARCHITECTURE.md 2.2 requires - a strategy cannot peek ahead because the
     API to do so does not exist.
+
+    Bars may be held in a sequence or arrive from a stream. A streamed source
+    is consumable exactly once and declares its length up front, so the engine
+    can report progress without having counted the bars itself. Forward-only
+    already forbade revisiting a bar; streaming makes that a property of memory
+    as well as of the API.
     """
 
     def __init__(self, bars: Sequence[Bar]) -> None:
-        self._bars = bars
+        self._bars: Sequence[Bar] | None = bars
+        self._stream: Iterator[Bar] | None = None
+        self._count = len(bars)
 
     @classmethod
     def from_rows(cls, rows: Iterable[Mapping[str, object]]) -> BarIterator:
         return cls([bar_from_row(row) for row in rows])
 
+    @classmethod
+    def streaming(cls, bars: Iterable[Bar], *, count: int) -> BarIterator:
+        """Replay ``count`` bars from a single-pass source.
+
+        ``count`` is supplied because a stream cannot be measured without
+        draining it, and the bar loop needs the total to report progress.
+        """
+        if count < 0:
+            raise EngineError("Bar count must not be negative")
+        iterator = cls.__new__(cls)
+        iterator._bars = None
+        iterator._stream = iter(bars)
+        iterator._count = count
+        return iterator
+
+    @property
+    def is_streaming(self) -> bool:
+        return self._bars is None
+
     def __len__(self) -> int:
-        return len(self._bars)
+        return self._count
 
     def __iter__(self) -> Iterator[Bar]:
-        return iter(self._bars)
+        if self._bars is not None:
+            return iter(self._bars)
+        if self._stream is None:
+            raise EngineError(
+                "This BarIterator streams its bars and has already been replayed; "
+                "build a new one to run again"
+            )
+        stream, self._stream = self._stream, None
+        return stream

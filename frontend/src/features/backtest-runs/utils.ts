@@ -17,11 +17,14 @@ export function backtestRunToExecutionResult(run: BacktestRun): ExecutionResult 
     position_closed: run.position_closed,
     trade_count: run.trade_count,
     metrics: run.metrics,
+    analytics: run.analytics,
     equity_history: run.equity_history,
     candles: run.candles,
     entry_markers: run.entry_markers,
     exit_markers: run.exit_markers,
-    explain_events: run.explain_events ?? [],
+    // The run's lifecycle only. Per-bar and per-trade events are paged in by
+    // the Event Explorer rather than inlined on the run.
+    explain_events: run.lifecycle_events ?? [],
     explain_level: run.explain_level,
   }
 }

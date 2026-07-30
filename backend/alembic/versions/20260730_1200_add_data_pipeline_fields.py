@@ -47,10 +47,14 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=26), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["dataset_id"], ["datasets.id"], name=op.f("fk_data_imports_dataset_id_datasets")),
+        sa.ForeignKeyConstraint(
+            ["dataset_id"], ["datasets.id"], name=op.f("fk_data_imports_dataset_id_datasets")
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_data_imports")),
     )
-    op.create_index(op.f("ix_data_imports_dataset_id"), "data_imports", ["dataset_id"], unique=False)
+    op.create_index(
+        op.f("ix_data_imports_dataset_id"), "data_imports", ["dataset_id"], unique=False
+    )
 
 
 def downgrade() -> None:

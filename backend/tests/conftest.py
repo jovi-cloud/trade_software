@@ -64,12 +64,17 @@ def db_session(db_engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def app(settings: Settings, db_engine: Engine) -> FastAPI:
+def app(settings: Settings, db_engine: Engine) -> Iterator[FastAPI]:
+    import app.db.session as db_session_module
     from app.api.deps import get_db
     from app.core.config import get_settings
     from app.main import create_app
 
     factory = _session_factory(db_engine)
+    previous_engine = db_session_module._engine
+    previous_factory = db_session_module._session_factory
+    db_session_module._engine = db_engine
+    db_session_module._session_factory = factory
 
     def _get_db_override() -> Iterator[Session]:
         session = factory()
@@ -85,7 +90,10 @@ def app(settings: Settings, db_engine: Engine) -> FastAPI:
     # settings instead of this test's tmp_path, and tests would write into
     # the actual data/ directory.
     application.dependency_overrides[get_settings] = lambda: settings
-    return application
+    yield application
+    application.state.job_runner.shutdown()
+    db_session_module._engine = previous_engine
+    db_session_module._session_factory = previous_factory
 
 
 @pytest.fixture

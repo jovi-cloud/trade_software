@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import chain
 
 from app.domain.explain import ExplainLevel
 from app.engine.bars import BarIterator
@@ -15,7 +17,7 @@ from app.engine.execution.order_service import OrderService
 from app.engine.execution.portfolio import PortfolioManager
 from app.engine.execution.simulator import ExecutionSimulator, SimulatorConfig
 from app.engine.execution.trade_manager import TradeManager
-from app.engine.explain import ExplainCollector
+from app.engine.explain import MAX_PER_BAR_EXPLAIN_EVENTS, ExplainCollector
 from app.engine.explain.condition_collector import ConditionCollector
 from app.engine.results.result import ExecutionResult
 from app.engine.strategy.provider import SourceStrategyProvider, StrategyProvider
@@ -53,6 +55,8 @@ class ExecutionEngine:
         bars: BarIterator,
         strategy_source: str | None = None,
         strategy: StrategyProvider | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> ExecutionResult:
         """Replay ``bars`` through a strategy.
 
@@ -72,7 +76,16 @@ class ExecutionEngine:
         logs = LogCollector()
         errors: list[str] = []
         warnings: list[str] = []
-        bar_list = list(bars)
+        total_bars = len(bars)
+        # Replayed one bar at a time. A streamed source is never materialised,
+        # which is what keeps a multi-million-bar dataset from costing gigabytes
+        # before the first bar is even processed. The first bar is pulled early
+        # only to date the events recorded before the loop starts, then pushed
+        # back on the front - the loop still sees every bar exactly once.
+        bar_stream = iter(bars)
+        first_bar = next(bar_stream, None)
+        if first_bar is not None:
+            bar_stream = chain((first_bar,), bar_stream)
         collector = (
             ExplainCollector(self.config.explain_level)
             if self.config.explain_level is not ExplainLevel.NONE
@@ -84,14 +97,14 @@ class ExecutionEngine:
                 timeframe=self.config.timeframe,
             )
         if collector is not None:
-            collector.record_run_started(bar_count=len(bar_list))
+            collector.record_run_started(bar_count=total_bars)
             collector.record_parameters_applied(
                 initial_capital=self.config.initial_capital,
                 commission=self.config.commission,
                 slippage=self.config.slippage,
             )
-            if bar_list:
-                collector.set_clock(bar_list[0].ts)
+            if first_bar is not None:
+                collector.set_clock(first_bar.ts)
 
         try:
             loaded = provider.load(logs)
@@ -124,13 +137,18 @@ class ExecutionEngine:
         elif not loaded.defines_on_bar:
             warnings.append("Strategy defines no on_bar hook; bars were replayed but unused.")
 
-        if len(bar_list) == 0:
+        if total_bars == 0:
             warnings.append("Dataset contains no bars; nothing was replayed.")
 
         portfolio = PortfolioManager(self.config.initial_capital)
         order_book = OrderBook()
         trade_manager = TradeManager()
-        condition_collector = ConditionCollector() if collector is not None else None
+        # Condition traces exist to fill the Decision Inspector, which only FULL
+        # feeds. Below that level, collecting them costs a snapshot per bar and
+        # nothing reads the result.
+        condition_collector = (
+            ConditionCollector() if collector is not None and collector.records_bar_events else None
+        )
         order_service = OrderService(order_book, portfolio, warnings, collector=collector)
         simulator = ExecutionSimulator(
             config=SimulatorConfig(
@@ -177,10 +195,15 @@ class ExecutionEngine:
 
         pending = order_book.take_pending()
 
-        for index, bar in enumerate(bar_list):
+        last_ts = first_bar.ts if first_bar is not None else 0
+        for index, bar in enumerate(bar_stream):
+            last_ts = bar.ts
+            if should_cancel is not None and should_cancel():
+                warnings.append("Backtest was cancelled before completion.")
+                completed = False
+                break
             if collector is not None:
                 collector.set_clock(bar.ts)
-                collector.record_bar_processing_started(bar_index=index, timestamp_ms=bar.ts)
             if pending:
                 simulator.fill_pending(pending, bar, index)
                 pending = []
@@ -213,6 +236,12 @@ class ExecutionEngine:
                 collector.record_conditions_evaluated(snapshot, timestamp_ms=bar.ts)
                 condition_collector.clear()
             bars_processed += 1
+            if on_progress is not None and (
+                bars_processed == total_bars or bars_processed % 50 == 0
+            ):
+                on_progress(bars_processed, total_bars)
+            if bars_processed % 100 == 0:
+                time.sleep(0)
             pending = order_book.take_pending()
             if collector is not None and portfolio.has_position:
                 position = portfolio.position
@@ -241,7 +270,14 @@ class ExecutionEngine:
                 completed = False
 
         if collector is not None:
-            collector.set_clock(bar_list[-1].ts if bar_list else collector.clock_ms)
+            collector.set_clock(last_ts if total_bars else collector.clock_ms)
+            if collector.dropped_event_count:
+                warnings.append(
+                    f"Explainability log truncated: {collector.dropped_event_count:,} per-bar "
+                    f"events were dropped after the first {MAX_PER_BAR_EXPLAIN_EVENTS:,}. "
+                    "Trades, orders and metrics are complete; run a shorter date range for "
+                    "a full bar-by-bar decision log."
+                )
             collector.record_run_completed(
                 completed=completed,
                 trade_count=trade_manager.trade_count,

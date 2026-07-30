@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from tests.api.test_backtests import _create_strategy, _import_dataset, _save_strategy_code
+from tests.helpers.backtests import submit_backtest
 
 TRADING_STRATEGY = """
 class Strategy:
@@ -30,17 +31,16 @@ def _execute_run(client: TestClient) -> str:
     strategy_id = _create_strategy(client)
     _save_strategy_code(client, strategy_id, TRADING_STRATEGY)
     dataset_id = _import_dataset(client)
-    response = client.post(
-        "/api/v1/backtests/execute",
-        json={
+    body = submit_backtest(
+        client,
+        {
             "strategy_id": strategy_id,
             "dataset_id": dataset_id,
             "initial_capital": 10_000,
             "explain_level": "trades_only",
         },
     )
-    assert response.status_code == 200
-    run_id = response.json()["run_id"]
+    run_id = body["run_id"]
     assert isinstance(run_id, str)
     return run_id
 

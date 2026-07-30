@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from app.domain.conditions import ConditionSnapshot
 from app.domain.enums import OrderType, PositionSide
 from app.domain.explain import ExplainEventStatus, ExplainEventType, ExplainLayer, ExplainLevel
 from app.engine.execution.order import Order
-from app.engine.explain.collector import ExplainCollector
+from app.engine.explain.collector import MAX_PER_BAR_EXPLAIN_EVENTS, ExplainCollector
+from app.engine.explain.condition_collector import ConditionCollector
 
 
 def _order(
@@ -110,3 +112,45 @@ def test_events_have_sequential_seq_and_human_messages() -> None:
     assert collector.events[1].seq == 2
     assert collector.events[0].message
     assert collector.events[0].status is ExplainEventStatus.INFO
+
+
+def _conditions(bar_index: int) -> ConditionSnapshot:
+    collector = ConditionCollector()
+    collector.trace_condition("EMA20 > EMA50", actual="1 > 0", expected="True", passed=True)
+    return collector.snapshot(bar_index=bar_index)
+
+
+def test_conditions_are_decision_detail_and_need_full_level() -> None:
+    collector = ExplainCollector(ExplainLevel.TRADES_ONLY)
+    collector.record_conditions_evaluated(_conditions(0), timestamp_ms=1_000)
+    assert collector.events == ()
+
+
+def test_per_bar_events_stop_at_the_budget_and_are_counted() -> None:
+    collector = ExplainCollector(ExplainLevel.FULL)
+    for bar_index in range(MAX_PER_BAR_EXPLAIN_EVENTS + 250):
+        collector.record_conditions_evaluated(_conditions(bar_index), timestamp_ms=bar_index)
+
+    assert len(collector.events) == MAX_PER_BAR_EXPLAIN_EVENTS
+    assert collector.dropped_event_count == 250
+
+
+def test_the_budget_never_costs_a_trade_event() -> None:
+    """Exhausting the per-bar budget must not silence the trade record."""
+    collector = ExplainCollector(ExplainLevel.FULL)
+    for bar_index in range(MAX_PER_BAR_EXPLAIN_EVENTS + 1):
+        collector.record_conditions_evaluated(_conditions(bar_index), timestamp_ms=bar_index)
+    assert collector.dropped_event_count == 1
+
+    order = _order()
+    collector.record_order_submitted(order)
+    order.fill_price = 100.0
+    order.fill_ts = 2_000
+    order.filled_bar_index = 1
+    collector.record_order_filled(order, cash=9_000.0, portfolio_value=10_000.0)
+    collector.record_run_completed(completed=True, trade_count=1)
+
+    types = {event.event_type for event in collector.events[MAX_PER_BAR_EXPLAIN_EVENTS:]}
+    assert ExplainEventType.ORDER_SUBMITTED in types
+    assert ExplainEventType.ORDER_FILLED in types
+    assert ExplainEventType.RUN_COMPLETED in types

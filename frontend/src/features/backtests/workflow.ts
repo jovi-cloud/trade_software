@@ -24,6 +24,7 @@ export type StrategySource = 'library' | 'user'
 export const DEFAULT_CAPITAL = '100000'
 export const DEFAULT_COMMISSION = '0'
 export const DEFAULT_SLIPPAGE = '0'
+export const DEFAULT_MAX_BARS = '500'
 
 export interface WorkflowState {
   source: StrategySource
@@ -44,6 +45,10 @@ export interface WorkflowState {
    * do, the level follows the selected strategy's recommendation.
    */
   explainLevelChosen: boolean
+  /** When true, only the first ``maxBars`` bars are replayed. */
+  limitBars: boolean
+  /** Numeric field kept as a string so a half-typed value is not clobbered. */
+  maxBars: string
 }
 
 export function createInitialWorkflow(): WorkflowState {
@@ -59,6 +64,8 @@ export function createInitialWorkflow(): WorkflowState {
     slippage: DEFAULT_SLIPPAGE,
     explainLevel: 'full',
     explainLevelChosen: false,
+    limitBars: false,
+    maxBars: DEFAULT_MAX_BARS,
   }
 }
 
@@ -171,6 +178,18 @@ export function parseNumericSettings(
   return { ok: true, values: { initialCapital, commission, slippage } }
 }
 
+/** Parse the optional bar limit, or explain what is wrong with it. */
+export function parseMaxBars(
+  state: WorkflowState,
+): { ok: false; error: string } | { ok: true; value: number | null } {
+  if (!state.limitBars) return { ok: true, value: null }
+  const maxBars = Number(state.maxBars)
+  if (!Number.isFinite(maxBars) || maxBars < 1 || !Number.isInteger(maxBars)) {
+    return { ok: false, error: 'Bar limit must be a whole number of at least 1.' }
+  }
+  return { ok: true, value: maxBars }
+}
+
 export type ExecuteInput = components['schemas']['BacktestExecuteRequest']
 
 /**
@@ -184,6 +203,7 @@ export function toExecuteInput(
   state: WorkflowState,
   values: NumericSettings,
   explainLevel: ExplainLevel,
+  maxBars: number | null,
 ): ExecuteInput {
   const shared = {
     dataset_id: state.datasetId,
@@ -194,6 +214,7 @@ export function toExecuteInput(
     commission: values.commission,
     slippage: values.slippage,
     explain_level: explainLevel,
+    ...(maxBars !== null ? { max_bars: maxBars } : {}),
   }
   if (state.source === 'library') {
     return {
