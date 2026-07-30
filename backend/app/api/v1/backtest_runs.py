@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import DbSession, Paths
 from app.domain.enums import BacktestRunStatus
+from app.domain.explain import ExplainEventStatus, ExplainEventType, ExplainLayer
 from app.schemas.backtest_run import (
     BacktestRunListItem,
     BacktestRunRead,
@@ -16,12 +17,20 @@ from app.schemas.backtest_run import (
     read_from_row,
 )
 from app.schemas.common import Page
+from app.schemas.explain import (
+    BarInspectionRead,
+    ExplainEventFilter,
+    ExplainEventRead,
+    TradeInspectionRead,
+)
 from app.services.backtest_run_service import BacktestRunService
+from app.services.explain_service import ExplainService
 
 router = APIRouter(prefix="/backtests/runs", tags=["backtest-runs"])
 
 SortField = Literal["created_at", "execution_completed_at", "net_profit", "trade_count"]
 SortOrder = Literal["asc", "desc"]
+EventSortField = Literal["seq", "timestamp_ms", "bar_index", "event_type"]
 
 
 @router.get("", response_model=Page[BacktestRunListItem], summary="List backtest runs")
@@ -89,3 +98,119 @@ def delete_backtest_run(run_id: str, db: DbSession, paths: Paths) -> Response:
     service = BacktestRunService(db, paths)
     service.delete(run_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{run_id}/events",
+    response_model=Page[ExplainEventRead],
+    summary="List explainability events for a run",
+)
+def list_run_events(
+    run_id: str,
+    db: DbSession,
+    paths: Paths,
+    layer: ExplainLayer | None = None,
+    event_type: ExplainEventType | None = None,
+    trade_id: int | None = Query(default=None, ge=1),
+    order_id: int | None = Query(default=None, ge=1),
+    position_id: int | None = Query(default=None, ge=1),
+    reason_code: str | None = None,
+    status_filter: ExplainEventStatus | None = Query(default=None, alias="status"),
+    q: str | None = None,
+    timestamp_from_ms: int | None = Query(default=None, ge=0),
+    timestamp_to_ms: int | None = Query(default=None, ge=0),
+    bar_index: int | None = Query(default=None, ge=0),
+    sort: EventSortField = "seq",
+    order: SortOrder = "asc",
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> Page[ExplainEventRead]:
+    service = ExplainService(db, paths)
+    filters = ExplainEventFilter(
+        layer=layer,
+        event_type=event_type,
+        trade_id=trade_id,
+        order_id=order_id,
+        position_id=position_id,
+        reason_code=reason_code,
+        status=status_filter,
+        q=q,
+        timestamp_from_ms=timestamp_from_ms,
+        timestamp_to_ms=timestamp_to_ms,
+        bar_index=bar_index,
+    )
+    items, total = service.list_events(
+        run_id,
+        filters=filters,
+        limit=limit,
+        offset=offset,
+        sort=sort,
+        order=order,
+    )
+    return Page[ExplainEventRead](items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get(
+    "/{run_id}/trades/{trade_id}",
+    response_model=TradeInspectionRead,
+    summary="Inspect a trade reconstructed from explainability events",
+)
+def get_run_trade(run_id: str, trade_id: int, db: DbSession, paths: Paths) -> TradeInspectionRead:
+    service = ExplainService(db, paths)
+    return service.get_trade(run_id, trade_id)
+
+
+@router.get(
+    "/{run_id}/trades/{trade_id}/events",
+    response_model=Page[ExplainEventRead],
+    summary="List explainability events linked to a trade",
+)
+def list_run_trade_events(
+    run_id: str,
+    trade_id: int,
+    db: DbSession,
+    paths: Paths,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> Page[ExplainEventRead]:
+    service = ExplainService(db, paths)
+    items, total = service.list_trade_events(
+        run_id,
+        trade_id,
+        limit=limit,
+        offset=offset,
+    )
+    return Page[ExplainEventRead](items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get(
+    "/{run_id}/bars/{bar_index}",
+    response_model=BarInspectionRead,
+    summary="Inspect a single bar with decision and execution context",
+)
+def get_run_bar(run_id: str, bar_index: int, db: DbSession, paths: Paths) -> BarInspectionRead:
+    service = ExplainService(db, paths)
+    return service.get_bar(run_id, bar_index)
+
+
+@router.get(
+    "/{run_id}/bars/{bar_index}/events",
+    response_model=Page[ExplainEventRead],
+    summary="List explainability events for a single bar",
+)
+def list_run_bar_events(
+    run_id: str,
+    bar_index: int,
+    db: DbSession,
+    paths: Paths,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> Page[ExplainEventRead]:
+    service = ExplainService(db, paths)
+    items, total = service.list_bar_events(
+        run_id,
+        bar_index,
+        limit=limit,
+        offset=offset,
+    )
+    return Page[ExplainEventRead](items=items, total=total, limit=limit, offset=offset)

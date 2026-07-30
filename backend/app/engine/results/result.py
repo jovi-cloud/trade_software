@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from app.domain.explain import ExplainEvent, ExplainLevel
 from app.engine.execution.order import Order
 from app.engine.execution.trade import Trade
 from app.engine.results.chart_data import Candle, TradeMarker
@@ -31,3 +32,5 @@ class ExecutionResult:
     candles: tuple[Candle, ...] = field(default_factory=tuple)
     entry_markers: tuple[TradeMarker, ...] = field(default_factory=tuple)
     exit_markers: tuple[TradeMarker, ...] = field(default_factory=tuple)
+    explain_events: tuple[ExplainEvent, ...] = field(default_factory=tuple)
+    explain_level: ExplainLevel = ExplainLevel.NONE

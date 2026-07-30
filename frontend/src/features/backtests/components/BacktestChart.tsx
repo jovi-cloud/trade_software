@@ -13,6 +13,8 @@ import { TradeDetailsPanel } from './TradeDetailsPanel'
 
 interface BacktestChartProps {
   result: ExecutionResult
+  onBarSelect?: (barIndex: number) => void
+  selectedBarIndex?: number | null
 }
 
 interface TooltipState {
@@ -25,7 +27,7 @@ interface TooltipState {
   close: string
 }
 
-export function BacktestChart({ result }: BacktestChartProps) {
+export function BacktestChart({ result, onBarSelect, selectedBarIndex }: BacktestChartProps) {
   const { theme } = useTheme()
   const { containerRef, chartRef } = useLightweightChart(theme)
   const { seriesRef, markersRef } = useCandlestickSeries(chartRef, theme)
@@ -41,11 +43,11 @@ export function BacktestChart({ result }: BacktestChartProps) {
     () => buildMarkerTradeLookup(result.entry_markers, result.exit_markers),
     [result.entry_markers, result.exit_markers],
   )
-  const candleByTime = useMemo(() => {
-    const map = new Map<number, ExecutionResult['candles'][number]>()
-    for (const candle of result.candles) {
-      map.set(Math.floor(candle.ts / 1000), candle)
-    }
+  const candleIndexByTime = useMemo(() => {
+    const map = new Map<number, number>()
+    result.candles.forEach((candle, index) => {
+      map.set(Math.floor(candle.ts / 1000), index)
+    })
     return map
   }, [result.candles])
 
@@ -82,7 +84,7 @@ export function BacktestChart({ result }: BacktestChartProps) {
         return
       }
 
-      const candle = candleByTime.get(Math.floor(epochMs / 1000))
+      const candle = result.candles[candleIndexByTime.get(Math.floor(epochMs / 1000)) ?? -1]
       if (!candle) {
         setTooltip(null)
         return
@@ -103,9 +105,14 @@ export function BacktestChart({ result }: BacktestChartProps) {
       if (param.time === undefined) return
       const epochMs = chartTimeToEpochMs(param.time)
       if (epochMs === null) return
+      const barIndex = candleIndexByTime.get(Math.floor(epochMs / 1000))
+      if (barIndex !== undefined) {
+        onBarSelect?.(barIndex)
+      }
       const tradeSeq = markerLookup.get(Math.floor(epochMs / 1000))
-      if (tradeSeq === undefined) return
-      setLocalTradeSeq(tradeSeq)
+      if (tradeSeq !== undefined) {
+        setLocalTradeSeq(tradeSeq)
+      }
     }
 
     chart.subscribeCrosshairMove(handleCrosshair)
@@ -115,12 +122,17 @@ export function BacktestChart({ result }: BacktestChartProps) {
       chart.unsubscribeCrosshairMove(handleCrosshair)
       chart.unsubscribeClick(handleClick)
     }
-  }, [candleByTime, chartRef, markerLookup])
+  }, [candleIndexByTime, chartRef, markerLookup, onBarSelect, result.candles])
 
   return (
     <div className="space-y-4">
       <ChartContainer height={420}>
         <div ref={containerRef} className="absolute inset-0" />
+        {selectedBarIndex !== null && selectedBarIndex !== undefined && (
+          <div className="absolute left-3 top-3 rounded-md border border-primary/40 bg-background/90 px-2 py-1 text-xs">
+            Inspecting bar {selectedBarIndex + 1}
+          </div>
+        )}
         {tooltip && (
           <div
             className="pointer-events-none absolute z-10 rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-md"

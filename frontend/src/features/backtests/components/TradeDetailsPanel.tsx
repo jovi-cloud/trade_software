@@ -29,13 +29,13 @@ export function TradeDetailsPanel({ trade, onClose }: TradeDetailsPanelProps) {
         <Detail label="Entry price" value={trade.entry_price.toFixed(4)} />
         <Detail label="Exit price" value={trade.exit_price.toFixed(4)} />
         <Detail label="Quantity" value={trade.quantity.toString()} />
-        <Detail label="Gross P&L" value={formatCurrency(trade.gross_pnl)} />
+        <Detail label="Profit before costs" value={formatCurrency(trade.gross_pnl)} />
         <Detail
-          label="Net P&L"
+          label="Profit after costs"
           value={formatCurrency(trade.net_pnl)}
           valueClassName={pnlTextClass(trade.net_pnl)}
         />
-        <Detail label="Holding bars" value={trade.bars_held.toString()} />
+        <Detail label="Bars held" value={trade.bars_held.toString()} />
         <Detail label="Commission" value={formatCurrency(trade.commission)} />
         <Detail label="Slippage" value={formatCurrency(trade.slippage_cost)} />
       </dl>

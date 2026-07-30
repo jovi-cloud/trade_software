@@ -11,9 +11,15 @@ type ChartTab = 'price' | 'equity'
 
 interface BacktestChartTabsProps {
   result: ExecutionResult
+  selectedBarIndex?: number | null
+  onBarSelect?: (barIndex: number) => void
 }
 
-export function BacktestChartTabs({ result }: BacktestChartTabsProps) {
+export function BacktestChartTabs({
+  result,
+  selectedBarIndex,
+  onBarSelect,
+}: BacktestChartTabsProps) {
   const [tab, setTab] = useState<ChartTab>('price')
 
   return (
@@ -41,7 +47,11 @@ export function BacktestChartTabs({ result }: BacktestChartTabsProps) {
       </CardHeader>
       <CardContent>
         {tab === 'price' ? (
-          <BacktestChart result={result} />
+          <BacktestChart
+            result={result}
+            selectedBarIndex={selectedBarIndex}
+            onBarSelect={onBarSelect}
+          />
         ) : (
           <EquityChart equityHistory={result.equity_history} />
         )}

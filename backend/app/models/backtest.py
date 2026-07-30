@@ -58,6 +58,8 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     strategy_logs_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     warnings_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     errors_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    explain_events_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    explain_level: Mapped[str] = mapped_column(String(20), nullable=False, default="trades_only")
 
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=BacktestRunStatus.COMPLETED, index=True

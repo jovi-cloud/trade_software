@@ -68,6 +68,7 @@ export function RunBacktestForm({ onSubmit, isSubmitting }: RunBacktestFormProps
       initial_capital: capital,
       commission: commissionValue,
       slippage: slippageValue,
+      explain_level: 'trades_only',
     })
   }
 

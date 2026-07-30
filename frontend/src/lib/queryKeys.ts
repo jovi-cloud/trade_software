@@ -35,4 +35,15 @@ export const qk = {
     list: (params: Record<string, unknown>) => [...qk.backtestRuns.all, 'list', params] as const,
     detail: (id: string) => [...qk.backtestRuns.all, 'detail', id] as const,
   },
+  explain: {
+    all: ['explain'] as const,
+    events: (runId: string, filters: Record<string, unknown>) =>
+      [...qk.explain.all, 'events', runId, filters] as const,
+    trade: (runId: string, tradeId: number) =>
+      [...qk.explain.all, 'trade', runId, tradeId] as const,
+    tradeEvents: (runId: string, tradeId: number) =>
+      [...qk.explain.all, 'trade-events', runId, tradeId] as const,
+    bar: (runId: string, barIndex: number) =>
+      [...qk.explain.all, 'bar', runId, barIndex] as const,
+  },
 } as const

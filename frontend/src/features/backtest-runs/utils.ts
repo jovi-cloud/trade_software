@@ -21,5 +21,7 @@ export function backtestRunToExecutionResult(run: BacktestRun): ExecutionResult 
     candles: run.candles,
     entry_markers: run.entry_markers,
     exit_markers: run.exit_markers,
+    explain_events: run.explain_events ?? [],
+    explain_level: run.explain_level,
   }
 }

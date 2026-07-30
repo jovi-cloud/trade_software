@@ -14,6 +14,7 @@ from app.core.hashing import hash_file, hash_text
 from app.core.paths import DataPaths
 from app.db.base import utcnow
 from app.domain.enums import BacktestRunStatus, ImportStatus
+from app.engine.explain.serialize import event_to_dict
 from app.engine.results.metrics import MetricsEngine
 from app.engine.results.result import ExecutionResult
 from app.engine.runner import ExecutionConfig
@@ -85,6 +86,8 @@ def _serialize_result(result: ExecutionResult, *, initial_capital: float) -> dic
         "strategy_logs": list(result.strategy_logs),
         "warnings": list(result.warnings),
         "errors": list(result.errors),
+        "explain_events": [event_to_dict(event) for event in result.explain_events],
+        "explain_level": result.explain_level.value,
     }
 
 
@@ -159,6 +162,8 @@ class BacktestRunService:
             strategy_logs_json=_json_dumps(payload["strategy_logs"]),
             warnings_json=_json_dumps(payload["warnings"]),
             errors_json=_json_dumps(payload["errors"]),
+            explain_events_json=_json_dumps(payload["explain_events"]),
+            explain_level=str(payload["explain_level"]),
             status=status,
             error_message=error_message,
         )
@@ -213,6 +218,8 @@ class BacktestRunService:
             strategy_logs_json="[]",
             warnings_json="[]",
             errors_json=_json_dumps([error_message]),
+            explain_events_json="[]",
+            explain_level="trades_only",
             status=BacktestRunStatus.FAILED,
             error_message=error_message,
         )

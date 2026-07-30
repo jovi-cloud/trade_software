@@ -5,6 +5,8 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from app.domain.enums import OrderStatus, OrderType, PositionSide
+from app.domain.explain import ExplainLevel
+from app.schemas.explain import ExplainEventRead
 
 
 class BacktestExecuteRequest(BaseModel):
@@ -15,6 +17,7 @@ class BacktestExecuteRequest(BaseModel):
     initial_capital: float = Field(default=100_000.0, gt=0)
     commission: float = Field(default=0.0, ge=0)
     slippage: float = Field(default=0.0, ge=0)
+    explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY
 
 
 class OrderRead(BaseModel):
@@ -112,3 +115,5 @@ class ExecutionResultRead(BaseModel):
     candles: list[CandleRead]
     entry_markers: list[TradeMarkerRead]
     exit_markers: list[TradeMarkerRead]
+    explain_events: list[ExplainEventRead] = Field(default_factory=list)
+    explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY

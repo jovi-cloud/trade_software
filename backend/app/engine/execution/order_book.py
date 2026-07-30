@@ -18,6 +18,10 @@ class OrderBook:
     def history(self) -> tuple[Order, ...]:
         return tuple(self._history)
 
+    @property
+    def pending_count(self) -> int:
+        return len(self._pending)
+
     def submit(
         self,
         *,

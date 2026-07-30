@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from app.domain.enums import BacktestRunStatus
+from app.domain.explain import ExplainLevel
+from app.engine.explain.serialize import event_from_dict
 from app.schemas.backtest import (
     CandleRead,
     EquityPointRead,
@@ -16,6 +19,7 @@ from app.schemas.backtest import (
     TradeMarkerRead,
     TradeRead,
 )
+from app.schemas.explain import ExplainEventRead
 from app.services.backtest_run_research import research_completion_pct, research_timeline
 
 
@@ -100,6 +104,8 @@ class BacktestRunRead(BaseModel):
     warnings: list[str]
     errors: list[str]
     completed: bool
+    explain_events: list[ExplainEventRead] = Field(default_factory=list)
+    explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY
     status: BacktestRunStatus
     error_message: str | None
     notes: str | None
@@ -204,6 +210,11 @@ def read_from_row(run: Any, strategy_name: str, dataset_name: str) -> BacktestRu
         strategy_logs=json.loads(run.strategy_logs_json),
         warnings=json.loads(run.warnings_json),
         errors=json.loads(run.errors_json),
+        explain_events=[
+            ExplainEventRead.model_validate(asdict(event_from_dict(item)))
+            for item in json.loads(run.explain_events_json)
+        ],
+        explain_level=ExplainLevel(run.explain_level),
         completed=run.status == BacktestRunStatus.COMPLETED,
         status=run.status,
         error_message=run.error_message,

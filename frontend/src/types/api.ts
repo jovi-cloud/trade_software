@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/engine-validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Developer engine validation report
+         * @description Run deterministic validation scenarios and return pass/fail coverage.
+         */
+        get: operations["engine_validation_api_v1_system_engine_validation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/strategies": {
         parameters: {
             query?: never;
@@ -280,6 +300,8 @@ export interface components {
              * @default 0
              */
             slippage: number;
+            /** @default trades_only */
+            explain_level: components["schemas"]["ExplainLevel"];
         };
         /** BacktestRunListItem */
         BacktestRunListItem: {
@@ -382,6 +404,10 @@ export interface components {
             errors: string[];
             /** Completed */
             completed: boolean;
+            /** Explain Events */
+            explain_events?: components["schemas"]["ExplainEventRead"][];
+            /** @default trades_only */
+            explain_level: components["schemas"]["ExplainLevel"];
             status: components["schemas"]["BacktestRunStatus"];
             /** Error Message */
             error_message: string | null;
@@ -573,6 +599,35 @@ export interface components {
              */
             gap_samples: string[];
         };
+        /** DeterminismCheckRead */
+        DeterminismCheckRead: {
+            /** Iterations */
+            iterations: number;
+            /** Passed */
+            passed: boolean;
+            /** Hashes */
+            hashes: string[];
+        };
+        /** EngineValidationReportRead */
+        EngineValidationReportRead: {
+            /** Engine Version */
+            engine_version: string;
+            /** Scenario Count */
+            scenario_count: number;
+            /** Passed Count */
+            passed_count: number;
+            /** Failed Count */
+            failed_count: number;
+            /** Coverage Pct */
+            coverage_pct: number;
+            deterministic: components["schemas"]["DeterminismCheckRead"];
+            /** Scenarios */
+            scenarios: components["schemas"]["ScenarioRunResultRead"][];
+            /** Calculation Summary */
+            calculation_summary: string[];
+            /** Dataset Validation Summary */
+            dataset_validation_summary: string[];
+        };
         /** EquityPointRead */
         EquityPointRead: {
             /** Trade Number */
@@ -620,6 +675,234 @@ export interface components {
             entry_markers: components["schemas"]["TradeMarkerRead"][];
             /** Exit Markers */
             exit_markers: components["schemas"]["TradeMarkerRead"][];
+            /** Explain Events */
+            explain_events?: components["schemas"]["ExplainEventRead"][];
+            /** @default trades_only */
+            explain_level: components["schemas"]["ExplainLevel"];
+        };
+        /** ExplainEventRead */
+        ExplainEventRead: {
+            /** Schema Version */
+            schema_version?: number;
+            /** Event Id */
+            event_id: string;
+            /** Seq */
+            seq: number;
+            event_type: components["schemas"]["ExplainEventType"];
+            layer: components["schemas"]["ExplainLayer"];
+            /** Timestamp Ms */
+            timestamp_ms: number;
+            /** Bar Index */
+            bar_index?: number | null;
+            /** Reason Code */
+            reason_code: string;
+            status: components["schemas"]["ExplainEventStatus"];
+            /** Trade Id */
+            trade_id?: number | null;
+            /** Trade Seq */
+            trade_seq?: number | null;
+            /** Order Id */
+            order_id?: number | null;
+            /** Position Id */
+            position_id?: number | null;
+            /** Instrument */
+            instrument?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Message */
+            message: string;
+            /** Price */
+            price?: number | null;
+            /** Quantity */
+            quantity?: number | null;
+            /** Commission */
+            commission?: number | null;
+            /** Slippage */
+            slippage?: number | null;
+            /** Cash */
+            cash?: number | null;
+            /** Portfolio Value */
+            portfolio_value?: number | null;
+            /** Pnl */
+            pnl?: number | null;
+            /** Metadata */
+            metadata?: Record<string, unknown>;
+        };
+        /**
+         * ExplainEventStatus
+         * @description Outcome status for a recorded event.
+         * @enum {string}
+         */
+        ExplainEventStatus: "ok" | "rejected" | "warning" | "info" | "failed";
+        /**
+         * ExplainEventType
+         * @description Lifecycle and execution events recorded by :class:`ExplainCollector`.
+         * @enum {string}
+         */
+        ExplainEventType: "run_started" | "dataset_loaded" | "strategy_loaded" | "parameters_applied" | "bar_processing_started" | "conditions_evaluated" | "signal_generated" | "order_created" | "order_submitted" | "order_filled" | "order_rejected" | "position_opened" | "position_updated" | "position_closed" | "profit_calculated" | "metrics_generated" | "charts_generated" | "run_completed" | "human_narrative";
+        /**
+         * ExplainLayer
+         * @description Log layer for UI filtering (Phase 5A foundation).
+         * @enum {string}
+         */
+        ExplainLayer: "system" | "execution" | "decision" | "narrative";
+        /**
+         * ExplainLevel
+         * @description How much structured observation to collect during a run.
+         * @enum {string}
+         */
+        ExplainLevel: "none" | "trades_only" | "full";
+        /** TradeTimelineStepRead */
+        TradeTimelineStepRead: {
+            step_type: components["schemas"]["ExplainEventType"];
+            label: string;
+            event_seq: number;
+            timestamp_ms: number;
+            bar_index?: number | null;
+            price?: number | null;
+            quantity?: number | null;
+            commission?: number | null;
+            slippage?: number | null;
+            cash?: number | null;
+            portfolio_value?: number | null;
+            reason_code: string;
+            message: string;
+            related_event_seqs?: number[];
+        };
+        /** TradeSummaryRead */
+        TradeSummaryRead: {
+            trade_number: number;
+            direction: string;
+            entry_time_ms: number;
+            exit_time_ms: number;
+            entry_price: number;
+            exit_price: number;
+            gross_profit: number;
+            net_profit: number;
+            commission: number;
+            slippage: number;
+            holding_period_bars: number;
+            mae?: number | null;
+            mfe?: number | null;
+            return_pct: number;
+            risk_reward?: number | null;
+            status: components["schemas"]["TradeOutcome"];
+            order_ids?: number[];
+            position_id?: number | null;
+            event_count: number;
+        };
+        /** TradeInspectionRead */
+        TradeInspectionRead: {
+            summary: components["schemas"]["TradeSummaryRead"];
+            timeline: components["schemas"]["TradeTimelineStepRead"][];
+            event_seqs?: number[];
+        };
+        /**
+         * TradeOutcome
+         * @enum {string}
+         */
+        TradeOutcome: "winning" | "losing" | "break_even";
+        /** BarInspectionRead */
+        BarInspectionRead: {
+            bar_index: number;
+            candle: components["schemas"]["BarCandleRead"];
+            market_state: components["schemas"]["BarMarketStateRead"];
+            conditions: components["schemas"]["ConditionTraceRead"][];
+            decision: components["schemas"]["BarDecisionRead"];
+            execution: components["schemas"]["BarExecutionSummaryRead"];
+            timeline: components["schemas"]["BarTimelineStepRead"][];
+            open_orders: components["schemas"]["BarOrderSummaryRead"][];
+            filled_orders: components["schemas"]["BarOrderSummaryRead"][];
+            cancelled_orders: components["schemas"]["BarOrderSummaryRead"][];
+            event_seqs?: number[];
+            navigation: components["schemas"]["BarNavigationRead"];
+            explain_events?: components["schemas"]["ExplainEventRead"][];
+        };
+        /** BarCandleRead */
+        BarCandleRead: {
+            bar_index: number;
+            ts: number;
+            open: number;
+            high: number;
+            low: number;
+            close: number;
+            volume: number;
+        };
+        /** ConditionTraceRead */
+        ConditionTraceRead: {
+            name: string;
+            actual_value: string;
+            expected_value: string;
+            passed: boolean;
+        };
+        /** BarMarketStateRead */
+        BarMarketStateRead: {
+            current_price: number;
+            open: number;
+            high: number;
+            low: number;
+            close: number;
+            volume: number;
+            trend: string;
+            volatility_pct: number;
+            session: string;
+            indicators?: Record<string, string | number>;
+            cash?: number | null;
+            portfolio_value?: number | null;
+            position?: components["schemas"]["BarPositionSummaryRead"] | null;
+        };
+        /** BarPositionSummaryRead */
+        BarPositionSummaryRead: {
+            side: string;
+            quantity: number;
+            entry_price: number;
+        };
+        /** BarDecisionRead */
+        BarDecisionRead: {
+            decision_type: string;
+            reason_code: string;
+            message: string;
+            related_event_seqs?: number[];
+        };
+        /** BarExecutionSummaryRead */
+        BarExecutionSummaryRead: {
+            occurred: boolean;
+            message: string;
+            order_ref?: number | null;
+            fill_price?: number | null;
+            quantity?: number | null;
+            commission?: number | null;
+            slippage?: number | null;
+            position?: components["schemas"]["BarPositionSummaryRead"] | null;
+            pnl?: number | null;
+        };
+        /** BarTimelineStepRead */
+        BarTimelineStepRead: {
+            label: string;
+            event_type: components["schemas"]["ExplainEventType"];
+            event_seq: number;
+            timestamp_ms: number;
+        };
+        /** BarNavigationRead */
+        BarNavigationRead: {
+            bar_index: number;
+            bar_count: number;
+            previous_bar_index?: number | null;
+            next_bar_index?: number | null;
+            first_signal_bar?: number | null;
+            last_signal_bar?: number | null;
+            trade_entry_bars?: number[];
+            trade_exit_bars?: number[];
+        };
+        /** BarOrderSummaryRead */
+        BarOrderSummaryRead: {
+            order_ref: number;
+            order_type: string;
+            quantity: number;
+            status: string;
+            fill_price?: number | null;
+            commission?: number;
+            slippage_cost?: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -782,6 +1065,27 @@ export interface components {
          * @enum {string}
          */
         Priority: "low" | "medium" | "high";
+        /** ScenarioRunResultRead */
+        ScenarioRunResultRead: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Passed */
+            passed: boolean;
+            /** Expected */
+            expected: {
+                [key: string]: unknown;
+            };
+            /** Actual */
+            actual: {
+                [key: string]: unknown;
+            };
+            /** Differences */
+            differences: string[];
+            /** Result Hash */
+            result_hash: string;
+        };
         /** StrategyCodeRead */
         StrategyCodeRead: {
             /** Id */
@@ -1065,6 +1369,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    engine_validation_api_v1_system_engine_validation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngineValidationReportRead"];
                 };
             };
         };

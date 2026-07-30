@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ErrorState } from '@/components/common/ErrorState'
@@ -10,6 +11,7 @@ import { ResearchJournal } from '@/features/backtest-runs/components/ResearchJou
 import { useBacktestRun } from '@/features/backtest-runs/queries'
 import { backtestRunToExecutionResult } from '@/features/backtest-runs/utils'
 import { ExecutionResultCard } from '@/features/backtests/components/ExecutionResultCard'
+import { ExplainabilityPanel } from '@/features/explain/components/ExplainabilityPanel'
 import { formatCurrency, formatDate, formatDuration } from '@/lib/format'
 import { getErrorMessage } from '@/lib/apiClient'
 
@@ -17,6 +19,7 @@ export default function BacktestRunDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { data: run, isLoading, isError, error, refetch } = useBacktestRun(id)
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null)
 
   if (isLoading) {
     return (
@@ -99,7 +102,22 @@ export default function BacktestRunDetailPage() {
         </CardContent>
       </Card>
 
-      <ExecutionResultCard result={executionResult} />
+      <ExecutionResultCard
+        result={executionResult}
+        selectedBarIndex={selectedBarIndex}
+        onBarSelect={setSelectedBarIndex}
+      />
+
+      {run.explain_level !== 'none' && (
+        <div className="mt-8 max-w-6xl">
+          <ExplainabilityPanel
+            runId={run.id}
+            tradeCount={run.trade_count}
+            selectedBarIndex={selectedBarIndex}
+            onBarSelect={setSelectedBarIndex}
+          />
+        </div>
+      )}
 
       <div className="mt-8 max-w-6xl">
         <ResearchJournal run={run} />

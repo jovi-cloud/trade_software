@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from app.api.deps import DbSession, Paths
 from app.db.base import utcnow
+from app.engine.explain.serialize import event_to_dict
 from app.engine.results.metrics import MetricsEngine
 from app.engine.results.metrics_result import PerformanceMetrics
 from app.engine.results.result import ExecutionResult
@@ -21,6 +22,7 @@ from app.schemas.backtest import (
     TradeMarkerRead,
     TradeRead,
 )
+from app.schemas.explain import ExplainEventRead
 from app.services.backtest_run_service import BacktestRunService
 from app.services.execution_service import ExecutionService
 
@@ -66,6 +68,11 @@ def _to_response(
         exit_markers=[
             TradeMarkerRead.model_validate(asdict(marker)) for marker in result.exit_markers
         ],
+        explain_events=[
+            ExplainEventRead.model_validate(event_to_dict(event))
+            for event in result.explain_events
+        ],
+        explain_level=result.explain_level,
     )
 
 
@@ -79,10 +86,16 @@ def execute_backtest(
 ) -> ExecutionResultRead:
     execution_service = ExecutionService(db, paths)
     run_service = BacktestRunService(db, paths)
+    dataset = execution_service.dataset_repo.get(payload.dataset_id)
+    instrument = dataset.name if dataset else None
+    timeframe = dataset.timeframe if dataset else None
     config = execution_service.build_config(
         initial_capital=payload.initial_capital,
         commission=payload.commission,
         slippage=payload.slippage,
+        explain_level=payload.explain_level,
+        instrument=instrument,
+        timeframe=timeframe,
     )
     started_at = utcnow()
     result = execution_service.execute(
