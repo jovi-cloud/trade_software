@@ -29,7 +29,22 @@ def _mount_frontend(app: FastAPI, dist_dir: Path) -> None:
         logger.warning("Frontend dist not found at %s; API-only mode", dist_dir)
         return
 
-    logger.info("Serving frontend from %s", dist_dir)
+    index_path = dist_dir / "index.html"
+    assets_dir = dist_dir / "assets"
+    if not index_path.is_file():
+        logger.error("Frontend index.html missing at %s", index_path)
+        return
+    if not assets_dir.is_dir():
+        logger.error("Frontend assets directory missing at %s", assets_dir)
+        return
+
+    logger.info(
+        "Serving frontend from %s (%d asset files)",
+        dist_dir,
+        len(list(assets_dir.iterdir())),
+    )
+    # Explicit /assets mount first so JS/CSS bundles are never swallowed by the SPA fallback.
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend_assets")
     # Registered after API routes so /api/* is never swallowed by the static mount.
     app.mount(
         "/",

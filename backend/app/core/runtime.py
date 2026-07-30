@@ -36,12 +36,27 @@ def default_data_dir() -> Path:
 def frontend_dist_dir() -> Path:
     """Built frontend assets: ``frontend/dist`` in dev, bundled ``frontend_dist`` when frozen."""
     if is_frozen():
-        return bundle_dir() / "frontend_dist"
+        # PyInstaller onedir places datas next to the executable; onefile uses _MEIPASS.
+        candidates = [
+            Path(sys.executable).resolve().parent / "frontend_dist",
+            bundle_dir() / "frontend_dist",
+        ]
+        for candidate in candidates:
+            if candidate.is_dir():
+                return candidate
+        return candidates[0]
     return REPO_ROOT / "frontend" / "dist"
 
 
 def seed_data_bundle_dir() -> Path:
     """Bundled first-run seed tree staged under ``packaging/seed_data`` at build time."""
     if is_frozen():
-        return bundle_dir() / "seed_data"
+        candidates = [
+            Path(sys.executable).resolve().parent / "seed_data",
+            bundle_dir() / "seed_data",
+        ]
+        for candidate in candidates:
+            if candidate.is_dir():
+                return candidate
+        return candidates[0]
     return REPO_ROOT / "packaging" / "seed_data"

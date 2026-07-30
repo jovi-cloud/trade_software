@@ -67,7 +67,7 @@ cd backend && uv run pyinstaller ../packaging/backtesting.spec \
   --noconfirm
 ```
 
-The `.exe` is Windows-only; on Linux this produces a Linux binary for smoke-testing the bundle layout.
+Output: `packaging/dist/TradingResearch/TradingResearch.exe` (onedir bundle — not a single file).
 
 ## CI build (GitHub Actions)
 
