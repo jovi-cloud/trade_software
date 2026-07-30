@@ -1,5 +1,5 @@
 # --- User state: never commit. Backup by zipping data/ instead. ---
-data/
+/data/
 backups/
 *.db
 *.db-wal
