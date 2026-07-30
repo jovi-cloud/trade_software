@@ -1,0 +1,69 @@
+name: Windows Installer
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install backend dependencies (including packaging)
+        run: uv sync --group packaging
+        working-directory: backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Stage seed data
+        run: uv run python ../packaging/prepare_seed_data.py
+        working-directory: backend
+
+      - name: Build PyInstaller bundle
+        run: >
+          uv run pyinstaller ../packaging/backtesting.spec
+          --distpath ../packaging/dist
+          --workpath ../packaging/build
+          --noconfirm
+        working-directory: backend
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Compile installer
+        run: >
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\installer.iss
+        shell: pwsh
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradingResearch-Setup
+          path: packaging/installer/TradingResearch-Setup-*.exe
+          if-no-files-found: error

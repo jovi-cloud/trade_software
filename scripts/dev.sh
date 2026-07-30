@@ -15,7 +15,7 @@ echo "==> Applying migrations"
 (cd "$ROOT/backend" && uv run alembic upgrade head)
 
 echo "==> Backend  http://127.0.0.1:8000  (docs at /docs)"
-(cd "$ROOT/backend" && uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000) &
+(cd "$ROOT/backend" && uv run uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000) &
 
 echo "==> Frontend http://localhost:5173"
 (cd "$ROOT/frontend" && npm run dev) &

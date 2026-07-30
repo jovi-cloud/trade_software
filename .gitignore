@@ -24,6 +24,12 @@ dist/
 build/
 *.egg-info/
 
+# --- Packaging ---
+packaging/dist/
+packaging/build/
+packaging/installer/
+packaging/seed_data/
+
 # --- Node ---
 node_modules/
 frontend/dist/

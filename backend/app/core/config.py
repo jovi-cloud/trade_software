@@ -9,24 +9,31 @@ from typing import Literal
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# backend/app/core/config.py -> backend/app/core -> backend/app -> backend -> <repo root>
-REPO_ROOT: Path = Path(__file__).resolve().parents[3]
+from app.core.runtime import REPO_ROOT, default_data_dir, is_frozen
+
+
+def _settings_config() -> SettingsConfigDict:
+    if is_frozen():
+        return SettingsConfigDict(env_file_encoding="utf-8", extra="ignore")
+    return SettingsConfigDict(
+        env_file=REPO_ROOT / "backend" / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class Settings(BaseSettings):
     """Runtime configuration. Every value has a working default: the app must
     start with no .env file present."""
 
-    model_config = SettingsConfigDict(
-        env_file=(REPO_ROOT / "backend" / ".env"),
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config()
 
     # --- Application ---
     app_name: str = "Trading Strategy Research Platform"
-    env: Literal["dev", "test", "prod"] = "dev"
-    debug: bool = True
+    env: Literal["dev", "test", "prod"] = Field(
+        default_factory=lambda: "prod" if is_frozen() else "dev"
+    )
+    debug: bool = Field(default_factory=lambda: not is_frozen())
     api_v1_prefix: str = "/api/v1"
 
     # --- Server. Loopback only: this is a single-user local application. ---
@@ -34,7 +41,7 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # --- Storage. All user state lives under this one directory. ---
-    data_dir: Path = REPO_ROOT / "data"
+    data_dir: Path = Field(default_factory=default_data_dir)
 
     # --- Database. Empty means "derive from data_dir" (see database_url). ---
     database_url: str = ""
@@ -50,13 +57,21 @@ class Settings(BaseSettings):
     # --- CORS: the Vite dev server. Not needed once the frontend is built
     # and served by FastAPI, but required during development. ---
     cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
+        default_factory=lambda: (
+            []
+            if is_frozen()
+            else ["http://localhost:5173", "http://127.0.0.1:5173"]
+        )
     )
 
     @field_validator("data_dir")
     @classmethod
     def _absolute_data_dir(cls, value: Path) -> Path:
-        return value if value.is_absolute() else (REPO_ROOT / value).resolve()
+        if value.is_absolute():
+            return value
+        if is_frozen():
+            return default_data_dir().parent / value
+        return (REPO_ROOT / value).resolve()
 
     @property
     def sqlalchemy_url(self) -> str:

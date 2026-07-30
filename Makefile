@@ -20,7 +20,7 @@ dev: ## Run backend and frontend together (Ctrl-C stops both)
 	@./scripts/dev.sh
 
 dev-backend: ## Run the API with autoreload on http://127.0.0.1:8000
-	cd $(BACKEND) && uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+	cd $(BACKEND) && uv run uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 
 dev-frontend: ## Run the Vite dev server on http://localhost:5173
 	cd $(FRONTEND) && npm run dev
