@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install dev dev-backend dev-frontend test test-backend test-frontend lint lint-backend \
+.PHONY: help install dev dev-backend dev-frontend prod desktop test test-backend test-frontend lint lint-backend \
         lint-frontend format typecheck check migrate migration db-reset types build \
         clean backup
 
@@ -24,6 +24,13 @@ dev-backend: ## Run the API with autoreload on http://127.0.0.1:8000
 
 dev-frontend: ## Run the Vite dev server on http://localhost:5173
 	cd $(FRONTEND) && npm run dev
+
+# Packaged-app parity: built frontend served by FastAPI (not the Vite dev server).
+prod: build ## Like the installed app in a browser — http://127.0.0.1:8000
+	cd $(BACKEND) && uv run uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000
+
+desktop: build ## Desktop window using built frontend (closest test before installer)
+	cd $(BACKEND) && uv sync --group packaging && uv run python -m app.desktop
 
 # ---------------------------------------------------------------- tests ----
 test: test-backend test-frontend ## Run all tests
