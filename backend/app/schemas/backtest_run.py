@@ -68,6 +68,11 @@ class BacktestRunListItem(BaseModel):
     library_strategy_id: str | None = None
     dataset_id: str
     dataset_name: str
+    dataset_version_id: str | None = None
+    dataset_version_number: int | None = None
+    dataset_import_id: str | None = None
+    dataset_imported_at: datetime | None = None
+    dataset_quality_score: int | None = None
     execution_completed_at: datetime
     net_profit: float
     win_rate_pct: float
@@ -84,6 +89,11 @@ class BacktestRunRead(BaseModel):
     strategy_name: str
     dataset_id: str
     dataset_name: str
+    dataset_version_id: str | None = None
+    dataset_version_number: int | None = None
+    dataset_import_id: str | None = None
+    dataset_imported_at: datetime | None = None
+    dataset_quality_score: int | None = None
     engine_version: str
     execution_started_at: datetime
     execution_completed_at: datetime
@@ -167,6 +177,11 @@ def list_item_from_row(run: Any, strategy_name: str, dataset_name: str) -> Backt
         library_strategy_id=run.library_strategy_id,
         dataset_id=run.dataset_id,
         dataset_name=dataset_name,
+        dataset_version_id=run.dataset_version_id,
+        dataset_version_number=run.dataset_version_number,
+        dataset_import_id=run.dataset_import_id,
+        dataset_imported_at=run.dataset_imported_at,
+        dataset_quality_score=run.dataset_quality_score,
         execution_completed_at=run.execution_completed_at,
         net_profit=metrics.net_profit,
         win_rate_pct=metrics.win_rate_pct,
@@ -199,6 +214,11 @@ def read_from_row(run: Any, strategy_name: str, dataset_name: str) -> BacktestRu
         strategy_name=strategy_name,
         dataset_id=run.dataset_id,
         dataset_name=dataset_name,
+        dataset_version_id=run.dataset_version_id,
+        dataset_version_number=run.dataset_version_number,
+        dataset_import_id=run.dataset_import_id,
+        dataset_imported_at=run.dataset_imported_at,
+        dataset_quality_score=run.dataset_quality_score,
         engine_version=run.engine_version,
         execution_started_at=run.execution_started_at,
         execution_completed_at=run.execution_completed_at,

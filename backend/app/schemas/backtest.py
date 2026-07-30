@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.enums import OrderStatus, OrderType, PositionSide
 from app.domain.explain import ExplainLevel
@@ -24,12 +24,25 @@ class BacktestExecuteRequest(BaseModel):
     hand-create a research record first.
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     strategy_id: str | None = Field(
         default=None,
         min_length=1,
         description="Research container for the run. Optional for a library strategy.",
     )
     dataset_id: str = Field(min_length=1)
+    dataset_version_id: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Explicit immutable dataset version to run against.",
+    )
+    dataset_version_number: int | None = Field(
+        default=None,
+        ge=1,
+        alias="dataset_version",
+        description="Dataset version number. Omitted uses the current version.",
+    )
     initial_capital: float = Field(default=100_000.0, gt=0)
     commission: float = Field(default=0.0, ge=0)
     slippage: float = Field(default=0.0, ge=0)
@@ -56,6 +69,8 @@ class BacktestExecuteRequest(BaseModel):
         if self.strategy_params is not None and self.library_strategy_id is None:
             # Silently ignoring them would look like the run honoured values it never saw.
             raise ValueError("strategy_params only apply to a library strategy")
+        if self.dataset_version_id is not None and self.dataset_version_number is not None:
+            raise ValueError("Provide dataset_version_id or dataset_version, not both")
         return self
 
 
@@ -138,6 +153,9 @@ class ExecutionResultRead(BaseModel):
     """Outcome of one in-process replay with performance analytics."""
 
     run_id: str | None = None
+    dataset_version_id: str | None = None
+    dataset_version_number: int | None = None
+    dataset_fingerprint: str | None = None
     completed: bool
     bars_processed: int = Field(ge=0)
     execution_time_ms: float = Field(ge=0)

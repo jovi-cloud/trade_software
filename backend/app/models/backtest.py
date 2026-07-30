@@ -27,6 +27,17 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     dataset_id: Mapped[str] = mapped_column(
         String(26), ForeignKey("datasets.id"), nullable=False, index=True
     )
+    dataset_version_id: Mapped[str | None] = mapped_column(
+        String(26), ForeignKey("dataset_versions.id"), nullable=True, index=True
+    )
+    dataset_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    dataset_import_id: Mapped[str | None] = mapped_column(
+        String(26), ForeignKey("data_imports.id"), nullable=True
+    )
+    dataset_imported_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    dataset_quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     engine_version: Mapped[str] = mapped_column(String(20), nullable=False)
     execution_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

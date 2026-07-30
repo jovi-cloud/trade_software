@@ -32,6 +32,8 @@ export interface WorkflowState {
   /** Parameter edits for the selected library strategy. */
   params: Record<string, ParamValue>
   datasetId: string
+  /** Null means use the dataset's current (latest) version. */
+  datasetVersionNumber: number | null
   /** Numeric fields stay strings so a half-typed value is not clobbered. */
   initialCapital: string
   commission: string
@@ -51,6 +53,7 @@ export function createInitialWorkflow(): WorkflowState {
     userStrategyId: '',
     params: {},
     datasetId: '',
+    datasetVersionNumber: null,
     initialCapital: DEFAULT_CAPITAL,
     commission: DEFAULT_COMMISSION,
     slippage: DEFAULT_SLIPPAGE,
@@ -93,6 +96,7 @@ export function workflowFromRun(state: WorkflowState, run: BacktestRun): Workflo
     userStrategyId: isLibraryRun ? state.userStrategyId : run.strategy_id,
     params: (run.strategy_params ?? {}) as Record<string, ParamValue>,
     datasetId: run.dataset_id,
+    datasetVersionNumber: run.dataset_version_number ?? null,
     initialCapital: String(run.initial_capital),
     commission: String(run.commission),
     slippage: String(run.slippage),
@@ -183,6 +187,9 @@ export function toExecuteInput(
 ): ExecuteInput {
   const shared = {
     dataset_id: state.datasetId,
+    ...(state.datasetVersionNumber !== null
+      ? { dataset_version: state.datasetVersionNumber }
+      : {}),
     initial_capital: values.initialCapital,
     commission: values.commission,
     slippage: values.slippage,

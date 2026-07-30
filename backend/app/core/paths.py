@@ -40,6 +40,10 @@ class DataPaths:
     def logs(self) -> Path:
         return self.root / "logs"
 
+    def dataset_version_parquet(self, dataset_id: str, version_number: int) -> Path:
+        """Immutable parquet for one dataset version: market/{id}/v{n}.parquet."""
+        return self.market / dataset_id / f"v{version_number}.parquet"
+
     def ensure(self) -> None:
         """Create every directory. Idempotent; called once at startup."""
         for path in (self.root, self.market, self.artifacts, self.imports, self.logs):

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -17,7 +18,12 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.paths import DataPaths
 from app.data.errors import InvalidBarsError
 from app.data.loader import load_bars
-from app.domain.enums import ImportStatus, MarketType, StrategyStatus, Timeframe
+from app.domain.enums import (
+    DatasetVersionStatus,
+    MarketType,
+    StrategyStatus,
+    Timeframe,
+)
 from app.domain.explain import ExplainLevel
 from app.engine.bars import BarIterator
 from app.engine.explain.timeline import assemble_timeline, service_collector
@@ -31,8 +37,10 @@ from app.engine.strategy.provider import (
     SourceStrategyProvider,
     StrategyProvider,
 )
+from app.models.dataset_version import DatasetVersion
 from app.models.strategy import Strategy
 from app.repositories.dataset_repo import DatasetRepository
+from app.repositories.dataset_version_repo import DatasetVersionRepository
 from app.repositories.strategy_code_repo import StrategyCodeRepository
 from app.repositories.strategy_repo import StrategyRepository
 from app.services.metrics_service import MetricsService
@@ -64,6 +72,19 @@ class ResolvedStrategy:
 
 
 @dataclass(frozen=True)
+class ResolvedDatasetVersion:
+    """Immutable dataset version selected for one execution."""
+
+    id: str
+    version_number: int
+    parquet_path: Path
+    fingerprint: str
+    quality_score: int | None
+    data_import_id: str | None
+    imported_at: datetime | None
+
+
+@dataclass(frozen=True)
 class RunPlan:
     """Everything one execution needs, resolved and validated up front.
 
@@ -76,6 +97,7 @@ class RunPlan:
     dataset_id: str
     config: ExecutionConfig
     strategy: ResolvedStrategy
+    dataset_version: ResolvedDatasetVersion
 
 
 class ExecutionService:
@@ -85,6 +107,7 @@ class ExecutionService:
         self.strategy_repo = StrategyRepository(session)
         self.code_repo = StrategyCodeRepository(session)
         self.dataset_repo = DatasetRepository(session)
+        self.version_repo = DatasetVersionRepository(session)
         self.metrics_service = MetricsService()
         self.chart_builder = ChartDataBuilder()
         self.library = StrategyLibraryService()
@@ -119,6 +142,8 @@ class ExecutionService:
         commission: float,
         slippage: float,
         explain_level: ExplainLevel | None = None,
+        dataset_version_id: str | None = None,
+        dataset_version_number: int | None = None,
     ) -> RunPlan:
         """Resolve one run request into something the engine can be handed.
 
@@ -127,9 +152,15 @@ class ExecutionService:
         resolved, because resolving one may *create* it. A rejected run must
         not leave an empty research record behind.
         """
-        dataset = self.dataset_repo.get(dataset_id)
+        dataset = self.dataset_repo.get_selectable(dataset_id)
         if dataset is None:
-            raise NotFoundError(f"Dataset '{dataset_id}' not found")
+            raise NotFoundError(f"Dataset '{dataset_id}' not found or is not available")
+
+        dataset_version = self.resolve_dataset_version(
+            dataset_id,
+            dataset_version_id=dataset_version_id,
+            dataset_version_number=dataset_version_number,
+        )
 
         resolved = self.resolve_strategy(
             strategy_id=strategy_id,
@@ -156,6 +187,7 @@ class ExecutionService:
             dataset_id=dataset_id,
             config=config,
             strategy=resolved,
+            dataset_version=dataset_version,
         )
 
     def default_explain_level(self, library_strategy_id: str | None) -> ExplainLevel:
@@ -249,13 +281,15 @@ class ExecutionService:
         dataset_id: str,
         config: ExecutionConfig,
         strategy: ResolvedStrategy | None = None,
+        dataset_version: ResolvedDatasetVersion | None = None,
     ) -> ExecutionResult:
         resolved = strategy or self.resolve_strategy(strategy_id=strategy_id)
         dataset = self.dataset_repo.get(dataset_id)
         if dataset is None:
             raise NotFoundError(f"Dataset '{dataset_id}' not found")
+        version = dataset_version or self.resolve_dataset_version(dataset_id)
         try:
-            rows = load_bars(self._resolve_parquet(dataset_id))
+            rows = load_bars(version.parquet_path)
         except InvalidBarsError as exc:
             raise ValidationError(str(exc)) from exc
 
@@ -347,6 +381,66 @@ class ExecutionService:
             "rename or delete the existing ones"
         )
 
+    def resolve_dataset_version(
+        self,
+        dataset_id: str,
+        *,
+        dataset_version_id: str | None = None,
+        dataset_version_number: int | None = None,
+    ) -> ResolvedDatasetVersion:
+        """Resolve the immutable parquet version for one execution."""
+        dataset = self.dataset_repo.get(dataset_id)
+        if dataset is None:
+            raise NotFoundError(f"Dataset '{dataset_id}' not found")
+
+        version: DatasetVersion | None
+        if dataset_version_id is not None:
+            version = self.version_repo.get(dataset_version_id)
+            if version is None or version.dataset_id != dataset_id:
+                raise NotFoundError(f"Dataset version '{dataset_version_id}' not found")
+        elif dataset_version_number is not None:
+            version = self.version_repo.get_by_dataset_and_number(
+                dataset_id, dataset_version_number
+            )
+            if version is None:
+                raise NotFoundError(
+                    f"Dataset '{dataset.name}' has no version {dataset_version_number}"
+                )
+        else:
+            if dataset.current_version_id is None:
+                raise ValidationError(
+                    f"Dataset '{dataset.name}' is not ready to run against (no valid version)"
+                )
+            version = self.version_repo.get(dataset.current_version_id)
+
+        if version is None or version.status != DatasetVersionStatus.VALID.value:
+            raise ValidationError(
+                f"Dataset '{dataset.name}' is not ready to run against "
+                f"(version status: {version.status if version else 'missing'})"
+            )
+
+        path = self.paths.root / version.file_path
+        if not path.exists():
+            raise NotFoundError(f"The stored bars for dataset '{dataset.name}' are missing")
+
+        imported_at: datetime | None = None
+        if version.data_import_id:
+            from app.repositories.data_import_repo import DataImportRepository
+
+            data_import = DataImportRepository(self.session).get(version.data_import_id)
+            if data_import is not None:
+                imported_at = data_import.created_at
+
+        return ResolvedDatasetVersion(
+            id=version.id,
+            version_number=version.version_number,
+            parquet_path=path,
+            fingerprint=version.fingerprint,
+            quality_score=version.quality_score,
+            data_import_id=version.data_import_id,
+            imported_at=imported_at or version.created_at,
+        )
+
     def _load_source(self, strategy_id: str) -> str:
         if self.strategy_repo.get(strategy_id) is None:
             raise NotFoundError(f"Strategy '{strategy_id}' not found")
@@ -356,17 +450,3 @@ class ExecutionService:
             raise ValidationError("This strategy has no code saved yet")
         return code.code
 
-    def _resolve_parquet(self, dataset_id: str) -> Path:
-        dataset = self.dataset_repo.get(dataset_id)
-        if dataset is None:
-            raise NotFoundError(f"Dataset '{dataset_id}' not found")
-        if dataset.import_status != ImportStatus.COMPLETED:
-            raise ValidationError(
-                f"Dataset '{dataset.name}' is not ready to run against "
-                f"(import status: {dataset.import_status})"
-            )
-
-        path = self.paths.root / dataset.file_path
-        if not path.exists():
-            raise NotFoundError(f"The stored bars for dataset '{dataset.name}' are missing")
-        return path

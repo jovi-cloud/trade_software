@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useDatasets } from '@/features/datasets/queries'
+import { useDatasetVersions, useDatasets } from '@/features/datasets/queries'
 import { useStrategies } from '@/features/strategies/queries'
 import { useLibraryStrategies } from '@/features/strategy-library/queries'
 import type {
@@ -31,6 +31,7 @@ import {
   type WorkflowState,
 } from '../workflow'
 import { updateWorkflow } from '../workflowStore'
+import { DatasetVersionSelector } from './DatasetVersionSelector'
 import { ExecutionSettings } from './ExecutionSettings'
 import { LibraryStrategyConfig } from './LibraryStrategyConfig'
 
@@ -46,15 +47,23 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
   const library = useLibraryStrategies({ limit: LIST_LIMIT, valid_only: true })
   const strategies = useStrategies({ limit: 100, sort: 'name', order: 'asc' })
   const datasets = useDatasets({ limit: 100, sort: 'name', order: 'asc' })
+  const { data: datasetVersions = [] } = useDatasetVersions(state.datasetId)
 
   const [selected, setSelected] = useState<LibraryStrategy | null>(null)
   const [validation, setValidation] = useState<ParamValidation | undefined>(undefined)
   const [fieldError, setFieldError] = useState<string | null>(null)
 
   const readyDatasets = useMemo(
-    () => (datasets.data?.items ?? []).filter((dataset) => dataset.import_status === 'completed'),
+    () =>
+      (datasets.data?.items ?? []).filter(
+        (dataset) =>
+          (dataset.lifecycle === undefined || dataset.lifecycle === 'active') &&
+          (dataset.status === 'valid' || dataset.import_status === 'completed'),
+      ),
     [datasets.data?.items],
   )
+
+  const selectedDataset = readyDatasets.find((dataset) => dataset.id === state.datasetId)
 
   // The strategy detail arrives asynchronously; until it does there is no
   // recommendation to apply and the stored level stands.
@@ -197,7 +206,10 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
 
       <div className="space-y-2">
         <Label htmlFor="dataset">Dataset</Label>
-        <Select value={state.datasetId} onValueChange={(value) => patch({ datasetId: value })}>
+        <Select
+          value={state.datasetId}
+          onValueChange={(value) => patch({ datasetId: value, datasetVersionNumber: null })}
+        >
           <SelectTrigger id="dataset">
             <SelectValue placeholder="Select a dataset" />
           </SelectTrigger>
@@ -215,6 +227,16 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
           </p>
         )}
       </div>
+
+      {state.datasetId && (
+        <DatasetVersionSelector
+          datasetId={state.datasetId}
+          currentVersionNumber={selectedDataset?.current_version_number}
+          versions={datasetVersions}
+          selectedVersionNumber={state.datasetVersionNumber}
+          onChange={(datasetVersionNumber) => patch({ datasetVersionNumber })}
+        />
+      )}
 
       <ExecutionSettings
         state={state}

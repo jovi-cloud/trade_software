@@ -23,6 +23,8 @@ export const qk = {
     all: ['datasets'] as const,
     list: (params: DatasetListParams) => [...qk.datasets.all, 'list', params] as const,
     detail: (id: string) => [...qk.datasets.all, 'detail', id] as const,
+    versions: (id: string) => [...qk.datasets.all, 'versions', id] as const,
+    imports: (id: string) => [...qk.datasets.all, 'imports', id] as const,
     preview: (id: string, part: PreviewPart, rows: number) =>
       [...qk.datasets.all, 'preview', id, part, rows] as const,
   },

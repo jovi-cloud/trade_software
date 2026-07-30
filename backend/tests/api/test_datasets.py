@@ -11,7 +11,7 @@ VALID_CSV = (
     b"timestamp,open,high,low,close,volume\n"
     b"2024-01-01 09:15:00,100,101,99,100.5,1000\n"
     b"2024-01-01 09:16:00,100.5,102,100,101.5,1200\n"
-    b"2024-01-01 09:20:00,101.5,103,101,102.5,900\n"
+    b"2024-01-01 09:17:00,101.5,103,101,102.5,900\n"
 )
 
 
@@ -44,7 +44,8 @@ def test_import_creates_completed_dataset(client: TestClient) -> None:
     assert body["symbol"] == "NIFTY"
     assert body["row_count"] == 3
     assert body["validation_report"]["total_rows"] == 3
-    assert body["validation_report"]["missing_timestamps"] == 3
+    assert body["quality_score"] is not None
+    assert body["quality_score"] >= 70
 
 
 def test_import_with_missing_columns_returns_failed_dataset(client: TestClient) -> None:

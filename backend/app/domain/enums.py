@@ -24,6 +24,7 @@ class Timeframe(StrEnum):
     M1 = "1m"
     M3 = "3m"
     M5 = "5m"
+    M10 = "10m"
     M15 = "15m"
     M30 = "30m"
     H1 = "1h"
@@ -116,6 +117,33 @@ class ImportStatus(StrEnum):
 
     PROCESSING = "processing"
     COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class DatasetStatus(StrEnum):
+    """Import/validation state of a dataset aggregate (current version drives the state)."""
+
+    UPLOADED = "uploaded"
+    VALIDATING = "validating"
+    VALID = "valid"
+    INVALID = "invalid"
+    FAILED = "failed"
+
+
+class DatasetLifecycle(StrEnum):
+    """Whether a dataset is selectable, archived, or removed."""
+
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    DELETED = "deleted"
+
+
+class DatasetVersionStatus(StrEnum):
+    """Lifecycle of one immutable dataset version."""
+
+    VALIDATING = "validating"
+    VALID = "valid"
+    INVALID = "invalid"
     FAILED = "failed"
 
 

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import { REQUIRED_CSV_COLUMNS, TIMEFRAMES } from '../types'
+import { ACCEPTED_FILE_TYPES, REQUIRED_CSV_COLUMNS, TIMEFRAMES } from '../types'
 import type { DatasetImportInput, Timeframe } from '../types'
 
 interface ImportDatasetFormProps {
@@ -26,6 +26,9 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
   const [symbol, setSymbol] = useState('')
   const [exchange, setExchange] = useState('')
   const [timeframe, setTimeframe] = useState<Timeframe | undefined>(undefined)
+  const [timezone, setTimezone] = useState('Asia/Kolkata')
+  const [sessionOpen, setSessionOpen] = useState('09:15')
+  const [sessionClose, setSessionClose] = useState('15:30')
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [fieldError, setFieldError] = useState<string | null>(null)
@@ -34,8 +37,9 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
   function selectFile(selected: File | null) {
     if (!selected) return
     setFile(selected)
-    // Default the dataset name to the filename so the common case is one click.
-    if (!name.trim()) setName(selected.name.replace(/\.csv$/i, ''))
+    if (!name.trim()) {
+      setName(selected.name.replace(/\.(csv|xlsx|xls|parquet|pq)$/i, ''))
+    }
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -47,11 +51,10 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!file) return setFieldError('Choose a CSV file to import.')
+    if (!file) return setFieldError('Choose a data file to import.')
     if (!name.trim()) return setFieldError('Name is required.')
     if (!symbol.trim()) return setFieldError('Symbol is required.')
     if (!exchange.trim()) return setFieldError('Exchange is required.')
-    if (!timeframe) return setFieldError('Timeframe is required.')
     setFieldError(null)
 
     await onSubmit({
@@ -59,6 +62,9 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
       symbol: symbol.trim(),
       exchange: exchange.trim(),
       timeframe,
+      timezone: timezone.trim() || 'UTC',
+      sessionOpen,
+      sessionClose,
       file,
     })
   }
@@ -66,9 +72,7 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="file">CSV File</Label>
-        {/* Drop target only: the Browse button and hidden input remain the
-            keyboard-accessible path, so this div needs no role of its own. */}
+        <Label htmlFor="file">Market Data File</Label>
         <div
           onDragOver={(e) => {
             e.preventDefault()
@@ -84,7 +88,7 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
           {file ? (
             <p className="text-sm font-medium">{file.name}</p>
           ) : (
-            <p className="text-sm text-muted-foreground">Drag a CSV here, or</p>
+            <p className="text-sm text-muted-foreground">Drag CSV, Excel, or Parquet here, or</p>
           )}
           <Button
             type="button"
@@ -98,14 +102,14 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
             id="file"
             ref={inputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept={ACCEPTED_FILE_TYPES}
             className="hidden"
             onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Required columns: {REQUIRED_CSV_COLUMNS.join(', ')}. Timestamps may be ISO8601 or
-          <span className="tabular"> YYYY-MM-DD HH:MM:SS</span>.
+          Supported: CSV, XLSX, Parquet. Required columns (case-insensitive):{' '}
+          {REQUIRED_CSV_COLUMNS.join(', ')}. Timestamp aliases include DateTime, date, time.
         </p>
       </div>
 
@@ -145,10 +149,13 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="timeframe">Timeframe</Label>
-          <Select value={timeframe} onValueChange={(value) => setTimeframe(value as Timeframe)}>
+          <Label htmlFor="timeframe">Timeframe (optional)</Label>
+          <Select
+            value={timeframe ?? ''}
+            onValueChange={(value) => setTimeframe(value ? (value as Timeframe) : undefined)}
+          >
             <SelectTrigger id="timeframe" className="w-full">
-              <SelectValue placeholder="Select" />
+              <SelectValue placeholder="Auto-detect" />
             </SelectTrigger>
             <SelectContent>
               {TIMEFRAMES.map((tf) => (
@@ -160,8 +167,39 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
           </Select>
         </div>
       </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="timezone">Exchange timezone</Label>
+          <Input
+            id="timezone"
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            placeholder="Asia/Kolkata"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sessionOpen">Session open</Label>
+          <Input
+            id="sessionOpen"
+            value={sessionOpen}
+            onChange={(e) => setSessionOpen(e.target.value)}
+            placeholder="09:15"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sessionClose">Session close</Label>
+          <Input
+            id="sessionClose"
+            value={sessionClose}
+            onChange={(e) => setSessionClose(e.target.value)}
+            placeholder="15:30"
+          />
+        </div>
+      </div>
       <p className="text-xs text-muted-foreground">
-        The timeframe you choose is what missing-bar detection is measured against.
+        Leave timeframe blank to auto-detect from bar spacing. Imports scoring below 70 are
+        rejected.
       </p>
 
       {fieldError && <p className="text-sm text-destructive">{fieldError}</p>}

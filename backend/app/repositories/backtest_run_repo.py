@@ -38,6 +38,21 @@ class BacktestRunRepository:
     def delete(self, run: BacktestRun) -> None:
         self.session.delete(run)
 
+    def count_by_dataset_id(self, dataset_id: str) -> int:
+        stmt = select(func.count()).where(BacktestRun.dataset_id == dataset_id)
+        return int(self.session.scalar(stmt) or 0)
+
+    def list_by_dataset_id(
+        self, dataset_id: str, *, limit: int = 20
+    ) -> list[tuple[BacktestRun, str, str]]:
+        stmt = (
+            self._base_stmt()
+            .where(BacktestRun.dataset_id == dataset_id)
+            .order_by(BacktestRun.execution_completed_at.desc())
+            .limit(limit)
+        )
+        return [row._tuple() for row in self.session.execute(stmt)]
+
     def search(
         self,
         *,

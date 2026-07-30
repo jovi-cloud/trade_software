@@ -130,9 +130,40 @@ export default function BacktestRunDetailPage() {
               <dd>{run.slippage}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Dataset hash</dt>
+              <dt className="text-xs text-muted-foreground">Dataset</dt>
+              <dd>
+                <Link className="underline-offset-4 hover:underline" to={`/data/${run.dataset_id}`}>
+                  {run.dataset_name}
+                </Link>
+              </dd>
+            </div>
+            {run.dataset_version_number !== null && run.dataset_version_number !== undefined && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Dataset version</dt>
+                <dd>
+                  <Link
+                    className="underline-offset-4 hover:underline"
+                    to={`/data/${run.dataset_id}?version=${run.dataset_version_number}`}
+                  >
+                    v{run.dataset_version_number}
+                  </Link>
+                  {run.dataset_quality_score !== null &&
+                  run.dataset_quality_score !== undefined
+                    ? ` · quality ${run.dataset_quality_score}`
+                    : ''}
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-xs text-muted-foreground">Dataset fingerprint</dt>
               <dd className="truncate font-mono text-xs">{run.dataset_hash}</dd>
             </div>
+            {run.dataset_imported_at && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Data imported at</dt>
+                <dd>{formatDate(run.dataset_imported_at)}</dd>
+              </div>
+            )}
             {libraryId && (
               <div>
                 <dt className="text-xs text-muted-foreground">Library strategy</dt>

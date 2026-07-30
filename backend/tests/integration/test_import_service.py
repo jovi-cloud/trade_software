@@ -10,6 +10,7 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.paths import get_data_paths
 from app.data import store
 from app.domain.enums import ImportStatus, Timeframe
+from app.repositories.dataset_version_repo import DatasetVersionRepository
 from app.services.import_service import ImportService
 
 VALID_CSV = (
@@ -38,6 +39,7 @@ def test_import_csv_creates_completed_dataset(db_session: Session, settings: Set
     assert dataset.import_status == ImportStatus.COMPLETED
     assert dataset.symbol == "NIFTY"
     assert dataset.row_count == 3
+    assert dataset.current_version_number == 1
     assert dataset.start_date is not None
     assert dataset.end_date is not None
     assert dataset.file_path
@@ -59,7 +61,7 @@ def test_import_csv_writes_parquet_readable_by_store(
     assert frame.columns == ["ts", "open", "high", "low", "close", "volume"]
 
 
-def test_import_csv_stores_original_csv_for_revalidation(
+def test_import_csv_stores_original_file_for_revalidation(
     db_session: Session, settings: Settings
 ) -> None:
     service = _service(db_session, settings)
@@ -69,7 +71,11 @@ def test_import_csv_stores_original_csv_for_revalidation(
         name="NIFTY 1m", symbol="NIFTY", exchange="NSE", timeframe=Timeframe.M1, content=VALID_CSV
     )
 
-    assert (paths.imports / f"{dataset.id}.csv").read_bytes() == VALID_CSV
+    stored = list(paths.imports.glob(f"{dataset.id}_v1.*"))
+    assert stored
+    assert stored[0].read_bytes() == VALID_CSV
+    assert dataset.quality_score is not None
+    assert dataset.quality_score >= 70
 
 
 def test_import_csv_with_missing_columns_marks_failed(
@@ -116,6 +122,9 @@ def test_revalidate_reprocesses_stored_csv(db_session: Session, settings: Settin
     assert revalidated.id == dataset.id
     assert revalidated.import_status == ImportStatus.COMPLETED
     assert revalidated.row_count == 3
+    assert revalidated.current_version_number == 2
+    versions = DatasetVersionRepository(db_session).list_for_dataset(dataset.id)
+    assert len(versions) == 2
 
 
 def test_revalidate_missing_dataset_raises_not_found(

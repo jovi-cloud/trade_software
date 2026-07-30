@@ -1,11 +1,14 @@
 import { api } from '@/lib/apiClient'
 
 import type {
+  DataImport,
   Dataset,
   DatasetImportInput,
   DatasetListParams,
   DatasetPreview,
+  DatasetVersion,
   PreviewPart,
+  Timeframe,
 } from './types'
 
 interface Page<T> {
@@ -13,6 +16,14 @@ interface Page<T> {
   total: number
   limit: number
   offset: number
+}
+
+export function fetchDatasetVersions(datasetId: string): Promise<DatasetVersion[]> {
+  return api.get<DatasetVersion[]>(`/datasets/${datasetId}/versions`)
+}
+
+export function fetchDatasetImports(datasetId: string): Promise<DataImport[]> {
+  return api.get<DataImport[]>(`/datasets/${datasetId}/imports`)
 }
 
 export function fetchDatasets(params: DatasetListParams): Promise<Page<Dataset>> {
@@ -28,9 +39,30 @@ export function importDataset(input: DatasetImportInput): Promise<Dataset> {
   form.append('name', input.name)
   form.append('symbol', input.symbol)
   form.append('exchange', input.exchange)
-  form.append('timeframe', input.timeframe)
+  if (input.timeframe) form.append('timeframe', input.timeframe)
+  if (input.timezone) form.append('timezone', input.timezone)
+  if (input.sessionOpen) form.append('session_open', input.sessionOpen)
+  if (input.sessionClose) form.append('session_close', input.sessionClose)
   form.append('file', input.file)
   return api.post<Dataset>('/datasets/import', form)
+}
+
+export interface DatasetReferences {
+  reference_count: number
+  backtest_runs: Array<{
+    run_id: string
+    strategy_name: string
+    dataset_version_number?: number | null
+    execution_completed_at: string
+  }>
+}
+
+export function archiveDataset(id: string): Promise<Dataset> {
+  return api.post<Dataset>(`/datasets/${id}/archive`)
+}
+
+export function fetchDatasetReferences(id: string): Promise<DatasetReferences> {
+  return api.get<DatasetReferences>(`/datasets/${id}/references`)
 }
 
 export function deleteDataset(id: string): Promise<void> {
@@ -48,3 +80,18 @@ export function fetchDatasetPreview(
 ): Promise<DatasetPreview> {
   return api.get<DatasetPreview>(`/datasets/${id}/preview`, { params: { part, rows } })
 }
+
+export interface ImportPreview {
+  columns: string[]
+  suggested_mapping: Record<string, string>
+  sample_rows: Record<string, unknown>[]
+  row_count_estimate: number
+}
+
+export function previewImportFile(file: File): Promise<ImportPreview> {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<ImportPreview>('/datasets/import/preview', form)
+}
+
+export type { Timeframe }

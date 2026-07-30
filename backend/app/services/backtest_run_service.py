@@ -14,7 +14,7 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.hashing import hash_file, hash_text
 from app.core.paths import DataPaths
 from app.db.base import utcnow
-from app.domain.enums import BacktestRunStatus, ImportStatus
+from app.domain.enums import BacktestRunStatus, DatasetVersionStatus
 from app.engine.explain.serialize import event_to_dict
 from app.engine.results.metrics import MetricsEngine
 from app.engine.results.result import ExecutionResult
@@ -23,9 +23,11 @@ from app.engine.version import ENGINE_VERSION
 from app.models.backtest import BacktestRun
 from app.repositories.backtest_run_repo import BacktestRunRepository
 from app.repositories.dataset_repo import DatasetRepository
+from app.repositories.dataset_version_repo import DatasetVersionRepository
 from app.repositories.strategy_code_repo import StrategyCodeRepository
 from app.repositories.strategy_repo import StrategyRepository
 from app.schemas.backtest_run import BacktestRunResearchUpdate
+from app.services.execution_service import ResolvedDatasetVersion
 
 ALLOWED_SORT_COLUMNS = {
     "created_at",
@@ -100,6 +102,7 @@ class BacktestRunService:
         self.strategy_repo = StrategyRepository(session)
         self.code_repo = StrategyCodeRepository(session)
         self.dataset_repo = DatasetRepository(session)
+        self.version_repo = DatasetVersionRepository(session)
 
     def create_from_execution(
         self,
@@ -113,6 +116,7 @@ class BacktestRunService:
         library_strategy_id: str | None = None,
         library_strategy_version: str | None = None,
         strategy_params: Mapping[str, object] | None = None,
+        dataset_version: ResolvedDatasetVersion | None = None,
     ) -> BacktestRun:
         """Persist one completed replay.
 
@@ -139,15 +143,40 @@ class BacktestRunService:
         dataset = self.dataset_repo.get(dataset_id)
         if dataset is None:
             raise NotFoundError(f"Dataset '{dataset_id}' not found")
-        if dataset.import_status != ImportStatus.COMPLETED:
-            raise ValidationError(
-                f"Dataset '{dataset.name}' is not ready to run against "
-                f"(import status: {dataset.import_status})"
-            )
 
-        parquet_path = self.paths.root / dataset.file_path
+        if dataset_version is None:
+            if dataset.current_version_id is None:
+                raise ValidationError(
+                    f"Dataset '{dataset.name}' has no valid version to run against"
+                )
+            orm_version = self.version_repo.get(dataset.current_version_id)
+            if orm_version is None or orm_version.status != DatasetVersionStatus.VALID.value:
+                raise ValidationError(
+                    f"Dataset '{dataset.name}' is not ready to run against "
+                    f"(version status: {orm_version.status if orm_version else 'missing'})"
+                )
+            parquet_path = self.paths.root / orm_version.file_path
+            version = ResolvedDatasetVersion(
+                id=orm_version.id,
+                version_number=orm_version.version_number,
+                parquet_path=parquet_path,
+                fingerprint=orm_version.fingerprint,
+                quality_score=orm_version.quality_score,
+                data_import_id=orm_version.data_import_id,
+                imported_at=orm_version.created_at,
+            )
+        else:
+            version = dataset_version
+            parquet_path = version.parquet_path
+
         if not parquet_path.exists():
             raise NotFoundError(f"The stored bars for dataset '{dataset.name}' are missing")
+
+        data_import = None
+        if version.data_import_id:
+            from app.repositories.data_import_repo import DataImportRepository
+
+            data_import = DataImportRepository(self.session).get(version.data_import_id)
 
         completed_at = utcnow()
         payload = _serialize_result(result, initial_capital=config.initial_capital)
@@ -157,6 +186,13 @@ class BacktestRunService:
         run = BacktestRun(
             strategy_id=strategy_id,
             dataset_id=dataset_id,
+            dataset_version_id=version.id,
+            dataset_version_number=version.version_number,
+            dataset_import_id=version.data_import_id,
+            dataset_imported_at=version.imported_at or (
+                data_import.created_at if data_import else None
+            ),
+            dataset_quality_score=version.quality_score,
             engine_version=ENGINE_VERSION,
             execution_started_at=started_at,
             execution_completed_at=completed_at,
@@ -165,7 +201,7 @@ class BacktestRunService:
             commission=config.commission,
             slippage=config.slippage,
             strategy_code_snapshot=snapshot,
-            dataset_hash=hash_file(parquet_path),
+            dataset_hash=version.fingerprint or hash_file(parquet_path),
             strategy_hash=hash_text(snapshot),
             library_strategy_id=library_strategy_id,
             library_strategy_version=library_strategy_version,
@@ -206,6 +242,12 @@ class BacktestRunService:
         dataset_path: Path,
         error_message: str,
         execution_time_ms: float = 0.0,
+        dataset_version_id: str | None = None,
+        dataset_version_number: int | None = None,
+        dataset_import_id: str | None = None,
+        dataset_imported_at: datetime | None = None,
+        dataset_quality_score: int | None = None,
+        dataset_fingerprint: str | None = None,
     ) -> BacktestRun:
         completed_at = utcnow()
         empty_metrics = asdict(
@@ -218,6 +260,11 @@ class BacktestRunService:
         run = BacktestRun(
             strategy_id=strategy_id,
             dataset_id=dataset_id,
+            dataset_version_id=dataset_version_id,
+            dataset_version_number=dataset_version_number,
+            dataset_import_id=dataset_import_id,
+            dataset_imported_at=dataset_imported_at,
+            dataset_quality_score=dataset_quality_score,
             engine_version=ENGINE_VERSION,
             execution_started_at=started_at,
             execution_completed_at=completed_at,
@@ -226,7 +273,7 @@ class BacktestRunService:
             commission=config.commission,
             slippage=config.slippage,
             strategy_code_snapshot=strategy_code,
-            dataset_hash=hash_file(dataset_path),
+            dataset_hash=dataset_fingerprint or hash_file(dataset_path),
             strategy_hash=hash_text(strategy_code),
             bars_processed=0,
             trade_count=0,

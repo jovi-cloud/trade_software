@@ -3,10 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/lib/queryKeys'
 
 import {
+  archiveDataset,
   deleteDataset,
   fetchDataset,
+  fetchDatasetImports,
   fetchDatasetPreview,
+  fetchDatasetReferences,
   fetchDatasets,
+  fetchDatasetVersions,
   importDataset,
   revalidateDataset,
 } from './api'
@@ -16,6 +20,22 @@ export function useDatasets(params: DatasetListParams) {
   return useQuery({
     queryKey: qk.datasets.list(params),
     queryFn: () => fetchDatasets(params),
+  })
+}
+
+export function useDatasetVersions(id: string) {
+  return useQuery({
+    queryKey: qk.datasets.versions(id),
+    queryFn: () => fetchDatasetVersions(id),
+    enabled: id.length > 0,
+  })
+}
+
+export function useDatasetImports(id: string) {
+  return useQuery({
+    queryKey: qk.datasets.imports(id),
+    queryFn: () => fetchDatasetImports(id),
+    enabled: id.length > 0,
   })
 }
 
@@ -42,6 +62,25 @@ export function useImportDataset() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.datasets.all })
     },
+  })
+}
+
+export function useArchiveDataset() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => archiveDataset(id),
+    onSuccess: (dataset) => {
+      queryClient.setQueryData(qk.datasets.detail(dataset.id), dataset)
+      queryClient.invalidateQueries({ queryKey: qk.datasets.all })
+    },
+  })
+}
+
+export function useDatasetReferences(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...qk.datasets.detail(id), 'references'],
+    queryFn: () => fetchDatasetReferences(id),
+    enabled: enabled && id.length > 0,
   })
 }
 

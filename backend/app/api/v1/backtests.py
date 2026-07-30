@@ -42,10 +42,19 @@ def _metrics_read(
 
 
 def _to_response(
-    result: ExecutionResult, *, initial_capital: float, run_id: str | None = None
+    result: ExecutionResult,
+    *,
+    initial_capital: float,
+    run_id: str | None = None,
+    dataset_version_id: str | None = None,
+    dataset_version_number: int | None = None,
+    dataset_fingerprint: str | None = None,
 ) -> ExecutionResultRead:
     return ExecutionResultRead(
         run_id=run_id,
+        dataset_version_id=dataset_version_id,
+        dataset_version_number=dataset_version_number,
+        dataset_fingerprint=dataset_fingerprint,
         completed=result.completed,
         bars_processed=result.bars_processed,
         execution_time_ms=result.execution_time_ms,
@@ -94,6 +103,8 @@ def execute_backtest(
         commission=payload.commission,
         slippage=payload.slippage,
         explain_level=payload.explain_level,
+        dataset_version_id=payload.dataset_version_id,
+        dataset_version_number=payload.dataset_version_number,
     )
     started_at = utcnow()
     result = execution_service.execute(
@@ -101,6 +112,7 @@ def execute_backtest(
         dataset_id=plan.dataset_id,
         config=plan.config,
         strategy=plan.strategy,
+        dataset_version=plan.dataset_version,
     )
     run = run_service.create_from_execution(
         strategy_id=plan.strategy_id,
@@ -112,5 +124,13 @@ def execute_backtest(
         library_strategy_id=plan.strategy.library_strategy_id,
         library_strategy_version=plan.strategy.library_strategy_version,
         strategy_params=plan.strategy.params or None,
+        dataset_version=plan.dataset_version,
     )
-    return _to_response(result, initial_capital=plan.config.initial_capital, run_id=run.id)
+    return _to_response(
+        result,
+        initial_capital=plan.config.initial_capital,
+        run_id=run.id,
+        dataset_version_id=plan.dataset_version.id,
+        dataset_version_number=plan.dataset_version.version_number,
+        dataset_fingerprint=plan.dataset_version.fingerprint,
+    )

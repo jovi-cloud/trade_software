@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
+from app.domain.enums import DatasetLifecycle
 from app.models.dataset import Dataset
 
 
@@ -12,11 +13,23 @@ class DatasetRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def _active(self) -> Select[tuple[Dataset]]:
-        return select(Dataset).where(Dataset.deleted_at.is_(None))
+    def _readable(self) -> Select[tuple[Dataset]]:
+        return select(Dataset).where(
+            Dataset.deleted_at.is_(None),
+            Dataset.lifecycle != DatasetLifecycle.DELETED,
+        )
+
+    def _selectable(self) -> Select[tuple[Dataset]]:
+        return select(Dataset).where(
+            Dataset.deleted_at.is_(None),
+            Dataset.lifecycle == DatasetLifecycle.ACTIVE,
+        )
 
     def get(self, dataset_id: str) -> Dataset | None:
-        return self.session.scalars(self._active().where(Dataset.id == dataset_id)).first()
+        return self.session.scalars(self._readable().where(Dataset.id == dataset_id)).first()
+
+    def get_selectable(self, dataset_id: str) -> Dataset | None:
+        return self.session.scalars(self._selectable().where(Dataset.id == dataset_id)).first()
 
     def search(
         self,
@@ -27,8 +40,11 @@ class DatasetRepository:
         descending: bool,
         limit: int,
         offset: int,
+        lifecycle: str | None = None,
     ) -> tuple[list[Dataset], int]:
-        stmt = self._active()
+        stmt = self._readable()
+        if lifecycle:
+            stmt = stmt.where(Dataset.lifecycle == lifecycle)
         if q:
             like = f"%{q}%"
             stmt = stmt.where((Dataset.name.ilike(like)) | (Dataset.symbol.ilike(like)))

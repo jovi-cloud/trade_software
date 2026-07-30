@@ -7,8 +7,10 @@ Every model must be imported here so Alembic's ``--autogenerate`` (and
 from __future__ import annotations
 
 from app.models.backtest import BacktestRun
+from app.models.data_import import DataImport
 from app.models.dataset import Dataset
+from app.models.dataset_version import DatasetVersion
 from app.models.strategy import Strategy
 from app.models.strategy_code import StrategyCode
 
-__all__ = ["BacktestRun", "Dataset", "Strategy", "StrategyCode"]
+__all__ = ["BacktestRun", "DataImport", "Dataset", "DatasetVersion", "Strategy", "StrategyCode"]

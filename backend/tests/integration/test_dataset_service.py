@@ -39,7 +39,7 @@ def test_list_supports_search_by_name_and_symbol(db_session: Session, settings: 
     _import(db_session, settings, name="BTC 1m", symbol="BTCUSD")
     service = DatasetService(db_session, get_data_paths(settings))
 
-    items, total = service.list(
+    items, total = service.list_datasets(
         q="btc", timeframe=None, sort="updated_at", order="desc", limit=20, offset=0
     )
 
@@ -51,7 +51,7 @@ def test_list_filters_by_timeframe(db_session: Session, settings: Settings) -> N
     _import(db_session, settings)
     service = DatasetService(db_session, get_data_paths(settings))
 
-    items, total = service.list(
+    items, total = service.list_datasets(
         q=None, timeframe=Timeframe.M5, sort="updated_at", order="desc", limit=20, offset=0
     )
 
@@ -63,15 +63,15 @@ def test_delete_soft_deletes_and_removes_files(db_session: Session, settings: Se
     paths = get_data_paths(settings)
     dataset = _import(db_session, settings)
     parquet_path = paths.root / dataset.file_path
-    csv_path = paths.imports / f"{dataset.id}.csv"
+    import_files = list(paths.imports.glob(f"{dataset.id}_v1.*"))
     assert parquet_path.exists()
-    assert csv_path.exists()
+    assert import_files
 
     service = DatasetService(db_session, paths)
     service.delete(dataset.id)
 
     assert not parquet_path.exists()
-    assert not csv_path.exists()
+    assert not list(paths.imports.glob(f"{dataset.id}*"))
     with pytest.raises(NotFoundError):
         service.get(dataset.id)
 
