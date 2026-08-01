@@ -25,10 +25,16 @@ from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from typing import Literal
 
 from app.domain.enums import PositionSide
 from app.engine.bars import Bar
+from app.engine.execution.trailing_stop import (
+    TrailingMethod,
+    TrailingStopConfig,
+    TrailingStopManager,
+)
 from app.engine.indicators.session import SessionClock
 
 #: Quantities below this are treated as "cannot afford a position" rather than
@@ -236,10 +242,18 @@ class RiskRules:
     atr_period: int = 14
     #: Allow non-integer quantities (crypto and FX; false for equities/futures).
     fractional_quantity: bool = False
+    #: Preferred trailing-stop configuration. When set, takes precedence over
+    #: the legacy ``trailing_stop`` level rule.
+    trailing_config: TrailingStopConfig | None = None
 
     @property
     def needs_atr(self) -> bool:
-        return any(
+        trailing_needs_atr = (
+            self.trailing_config is not None
+            and self.trailing_config.enabled
+            and self.trailing_config.method is TrailingMethod.ATR
+        )
+        return trailing_needs_atr or any(
             isinstance(rule, AtrDistance)
             for rule in (self.stop_loss, self.take_profit, self.trailing_stop)
         )
@@ -310,6 +324,8 @@ class RiskRules:
             lines.append(
                 f"Trailing stop at {self.trailing_stop.describe()} from the best price reached"
             )
+        if self.trailing_config is not None and self.trailing_config.enabled:
+            lines.append(_describe_trailing_config(self.trailing_config))
         if self.max_bars_in_trade is not None:
             lines.append(f"Force an exit after {self.max_bars_in_trade} bars in the trade")
         if self.exit_at_time is not None:
@@ -319,6 +335,36 @@ class RiskRules:
         if not self.fractional_quantity:
             lines.append("Quantities are whole units (fractional sizes are floored)")
         return tuple(lines)
+
+
+@dataclass(frozen=True, slots=True)
+class StopLossOverride:
+    """Run-level replacement for a strategy's declared stop-loss rule."""
+
+    mode: Literal["percent", "atr", "disabled"]
+    percent: float | None = None
+    atr_multiple: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.mode == "percent":
+            if self.percent is None or self.percent <= 0:
+                raise ValueError("percent stop override requires a positive percent")
+        elif self.mode == "atr":
+            if self.atr_multiple is None or self.atr_multiple <= 0:
+                raise ValueError("atr stop override requires a positive atr_multiple")
+        elif self.mode != "disabled":
+            raise ValueError(f"unknown stop loss override mode: {self.mode}")
+
+
+def apply_stop_loss_override(rules: RiskRules, override: StopLossOverride) -> RiskRules:
+    """Replace only the stop-loss rule; sizing, targets and session exits are kept."""
+    if override.mode == "disabled":
+        return replace(rules, stop_loss=None)
+    if override.mode == "percent":
+        assert override.percent is not None
+        return replace(rules, stop_loss=PercentDistance(override.percent))
+    assert override.atr_multiple is not None
+    return replace(rules, stop_loss=AtrDistance(override.atr_multiple))
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +395,14 @@ class TradeRiskState:
     best_price: float
     stop_level: float | None = None
     target_level: float | None = None
+    trailing: TrailingStopManager | None = None
+    highest_price_since_entry: float = 0.0
+    lowest_price_since_entry: float = 0.0
+    max_favorable_excursion: float = 0.0
+    max_adverse_excursion: float = 0.0
+    max_profit: float = 0.0
+    max_drawdown_in_trade: float = 0.0
+    trade_seq: int = 0
 
     @classmethod
     def open(
@@ -359,6 +413,8 @@ class TradeRiskState:
         entry_bar_index: int,
         atr: float | None,
         rules: RiskRules,
+        quantity: float = 1.0,
+        trade_seq: int = 0,
     ) -> TradeRiskState:
         state = cls(
             side=side,
@@ -366,6 +422,9 @@ class TradeRiskState:
             entry_bar_index=entry_bar_index,
             atr_at_entry=atr,
             best_price=entry_price,
+            highest_price_since_entry=entry_price,
+            lowest_price_since_entry=entry_price,
+            trade_seq=trade_seq,
         )
         stop = rules.stop_distance(entry_price=entry_price, atr=atr)
         target = rules.target_distance(entry_price=entry_price, atr=atr)
@@ -374,16 +433,32 @@ class TradeRiskState:
             state.stop_level = entry_price - sign * stop
         if target is not None:
             state.target_level = entry_price + sign * target
+        trailing_config = resolve_trailing_config(rules)
+        if trailing_config is not None:
+            state.trailing = TrailingStopManager.open(
+                config=trailing_config,
+                side=side,
+                entry_price=entry_price,
+                atr_at_entry=atr,
+            )
+        state._update_excursions(bar=None, quantity=quantity, mark_price=entry_price)
         return state
 
-    def observe(self, bar: Bar) -> None:
-        """Track the most favourable price reached, for the trailing stop."""
+    def observe(self, bar: Bar, *, quantity: float = 1.0, atr: float | None = None) -> None:
+        """Update extremes, trailing stop, and excursion statistics for one bar."""
         if self.side is PositionSide.LONG:
             self.best_price = max(self.best_price, bar.high)
+            self.highest_price_since_entry = max(self.highest_price_since_entry, bar.high)
         else:
             self.best_price = min(self.best_price, bar.low)
+            self.lowest_price_since_entry = min(self.lowest_price_since_entry, bar.low)
+        if self.trailing is not None:
+            self.trailing.on_bar(bar, atr if atr is not None else self.atr_at_entry)
+        self._update_excursions(bar=bar, quantity=quantity, mark_price=bar.close)
 
     def trailing_level(self, rules: RiskRules, atr: float | None) -> float | None:
+        if self.trailing is not None:
+            return self.trailing.current_trailing_stop
         if rules.trailing_stop is None:
             return None
         distance = rules.trailing_stop.distance(entry_price=self.best_price, atr=atr)
@@ -391,6 +466,22 @@ class TradeRiskState:
             return None
         sign = 1.0 if self.side is PositionSide.LONG else -1.0
         return self.best_price - sign * distance
+
+    def _update_excursions(
+        self, *, bar: Bar | None, quantity: float, mark_price: float
+    ) -> None:
+        if self.side is PositionSide.LONG:
+            favourable = max(0.0, (self.highest_price_since_entry - self.entry_price) * quantity)
+            adverse = max(0.0, (self.entry_price - self.lowest_price_since_entry) * quantity)
+            floating = (mark_price - self.entry_price) * quantity
+        else:
+            favourable = max(0.0, (self.entry_price - self.lowest_price_since_entry) * quantity)
+            adverse = max(0.0, (self.highest_price_since_entry - self.entry_price) * quantity)
+            floating = (self.entry_price - mark_price) * quantity
+        self.max_favorable_excursion = max(self.max_favorable_excursion, favourable)
+        self.max_adverse_excursion = max(self.max_adverse_excursion, adverse)
+        self.max_profit = max(self.max_profit, floating)
+        self.max_drawdown_in_trade = max(self.max_drawdown_in_trade, -floating)
 
 
 def evaluate_risk_exit(
@@ -425,7 +516,18 @@ def evaluate_risk_exit(
         )
 
     trailing = state.trailing_level(rules, atr)
-    if trailing is not None and _breached(bar, trailing, adverse=True, is_long=is_long):
+    if state.trailing is not None:
+        if state.trailing.is_breached(bar):
+            level = state.trailing.current_trailing_stop
+            return RiskExit(
+                code="trailing_stop",
+                description=(
+                    f"Trailing stop breached: best price {_number(state.best_price)} "
+                    f"pulled the stop to {_number(level if level is not None else 0.0)}"
+                ),
+                level=level,
+            )
+    elif trailing is not None and _breached(bar, trailing, adverse=True, is_long=is_long):
         return RiskExit(
             code="trailing_stop",
             description=(
@@ -480,3 +582,25 @@ def _number(value: float) -> str:
     if float(value).is_integer():
         return str(int(value))
     return f"{value:g}"
+
+
+def resolve_trailing_config(rules: RiskRules) -> TrailingStopConfig | None:
+    """Build trailing configuration from explicit or legacy risk declarations."""
+    if rules.trailing_config is not None:
+        return rules.trailing_config if rules.trailing_config.enabled else None
+    trailing = rules.trailing_stop
+    if trailing is None:
+        return None
+    if isinstance(trailing, PercentDistance):
+        return TrailingStopConfig(method=TrailingMethod.PERCENT, percent=trailing.percent)
+    if isinstance(trailing, AtrDistance):
+        return TrailingStopConfig(method=TrailingMethod.ATR, atr_multiplier=trailing.multiple)
+    return None
+
+
+def _describe_trailing_config(config: TrailingStopConfig) -> str:
+    if config.method is TrailingMethod.PERCENT:
+        return f"Trailing stop {_number(config.percent or 0.0)}% from the best price reached"
+    if config.method is TrailingMethod.POINTS:
+        return f"Trailing stop {_number(config.points or 0.0)} points from the best price reached"
+    return f"Trailing stop {_number(config.atr_multiplier or 0.0)}x ATR from the best price reached"

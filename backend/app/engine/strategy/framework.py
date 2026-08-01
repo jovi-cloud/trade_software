@@ -53,6 +53,7 @@ from app.engine.strategy.risk import (
     MIN_QUANTITY,
     RiskRules,
     TradeRiskState,
+    apply_stop_loss_override,
     evaluate_risk_exit,
 )
 
@@ -315,6 +316,8 @@ class StrategyBase:
     def on_start(self) -> None:
         self._indicators = dict(self.declare_indicators())
         self._risk = self.declare_risk()
+        if self.ctx.stop_loss_override is not None:
+            self._risk = apply_stop_loss_override(self._risk, self.ctx.stop_loss_override)
         if self._risk.needs_atr:
             self._atr = AverageTrueRange(self._risk.atr_period)
         if self._risk.needs_session_clock:
@@ -388,6 +391,16 @@ class StrategyBase:
                 trade.trailing_level(self._risk, atr_now),
                 label="Trailing stop level",
             )
+            if (
+                self.ctx.trailing_stop_collector is not None
+                and trade.trailing is not None
+                and trade.trailing.current_trailing_stop is not None
+            ):
+                self.ctx.trailing_stop_collector.record(
+                    ts=view.bar.ts,
+                    level=trade.trailing.current_trailing_stop,
+                    trade_seq=trade.trade_seq,
+                )
             self.operand("risk_best_price", trade.best_price, label="Best price reached")
             self.operand("risk_entry_price", trade.entry_price, label="Entry price")
             self.operand("risk_bars_held", float(view.bars_held), label="Bars held", unit="bars")
@@ -408,7 +421,7 @@ class StrategyBase:
             )
             if risk_exit is not None:
                 self.note(f"Risk exit ({risk_exit.code}): {risk_exit.description}")
-                self.ctx.close()
+                self.ctx.close(exit_reason=risk_exit.code, risk_state=self._trade)
                 return
 
         signal = self.exit_signal(view)
@@ -420,7 +433,7 @@ class StrategyBase:
         )
         if signal is not None:
             self.note(f"Exit: {signal.reason}")
-            self.ctx.close()
+            self.ctx.close(exit_reason="signal", risk_state=self._trade)
 
     def _handle_flat(self, view: MarketView) -> None:
         if self._risk.no_entry_after is not None and self._clock is not None:
@@ -532,8 +545,14 @@ class StrategyBase:
                 entry_bar_index=bar_index,
                 atr=None if self._atr is None else self._atr.value,
                 rules=self._risk,
+                quantity=float(getattr(position, "quantity", 1.0)),
+                trade_seq=self.ctx.pending_trade_seq,
             )
-        self._trade.observe(bar)
+        self._trade.observe(
+            bar,
+            quantity=float(getattr(position, "quantity", 1.0)),
+            atr=None if self._atr is None else self._atr.value,
+        )
 
     def _session_snapshot(self) -> SessionSnapshot | None:
         clock = self._clock or self._borrowed_clock()

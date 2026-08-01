@@ -21,6 +21,15 @@ MarkerKind = Literal["entry", "exit"]
 #: longest-lived per-bar structure in a run. Slots drop the per-instance dict and
 #: roughly halve it.
 @dataclass(frozen=True, slots=True)
+class TrailingStopPoint:
+    """One point on the trailing-stop line while a position is open."""
+
+    ts: int
+    level: float
+    trade_seq: int
+
+
+@dataclass(frozen=True, slots=True)
 class Candle:
     """One OHLCV bar for the price chart."""
 
@@ -41,6 +50,20 @@ class TradeMarker:
     trade_seq: int
     side: PositionSide
     marker_kind: MarkerKind
+
+
+class TrailingStopCollector:
+    """Records trailing-stop levels bar-by-bar for chart overlays."""
+
+    def __init__(self) -> None:
+        self._points: list[TrailingStopPoint] = []
+
+    def record(self, *, ts: int, level: float, trade_seq: int) -> None:
+        self._points.append(TrailingStopPoint(ts=ts, level=level, trade_seq=trade_seq))
+
+    @property
+    def points(self) -> tuple[TrailingStopPoint, ...]:
+        return tuple(self._points)
 
 
 class CandleCollector:
@@ -139,4 +162,12 @@ class ChartDataBuilder:
         return tuple(entries), tuple(exits)
 
 
-__all__ = ["Candle", "CandleCollector", "ChartDataBuilder", "MarkerKind", "TradeMarker"]
+__all__ = [
+    "Candle",
+    "CandleCollector",
+    "ChartDataBuilder",
+    "MarkerKind",
+    "TradeMarker",
+    "TrailingStopCollector",
+    "TrailingStopPoint",
+]

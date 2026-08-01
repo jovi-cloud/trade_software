@@ -31,6 +31,7 @@ from app.engine.strategy.library._shared import (
     percent_stop_params,
     session_timezone_param,
     time_param,
+    trailing_stop_params,
 )
 from app.engine.strategy.metadata import (
     ChangelogEntry,
@@ -191,6 +192,7 @@ class VwapReversionStrategy(StrategyBase):
         *percent_stop_params(stop_default=1.0, target_default=0.0),
         max_bars_param(default=60),
         fractional_param(),
+        *trailing_stop_params(),
     )
 
     def declare_indicators(self) -> Mapping[str, Indicator]:

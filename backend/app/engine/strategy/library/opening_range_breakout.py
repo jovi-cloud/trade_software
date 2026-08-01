@@ -26,6 +26,7 @@ from app.engine.strategy.library._shared import (
     percent_stop_params,
     session_timezone_param,
     time_param,
+    trailing_stop_params,
 )
 from app.engine.strategy.metadata import (
     ChangelogEntry,
@@ -209,6 +210,7 @@ class OpeningRangeBreakoutStrategy(StrategyBase):
         *percent_stop_params(stop_default=1.0, target_default=2.0),
         max_bars_param(),
         fractional_param(),
+        *trailing_stop_params(),
     )
 
     def __init__(self, params: Mapping[str, object] | None = None) -> None:

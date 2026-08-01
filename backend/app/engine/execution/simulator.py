@@ -9,6 +9,7 @@ from app.domain.money import mul_money, round_money, round_price
 from app.engine.bars import Bar
 from app.engine.execution.order import Order
 from app.engine.execution.order_book import OrderBook
+from app.engine.execution.order_service import OrderService
 from app.engine.execution.portfolio import PortfolioManager
 from app.engine.execution.trade_manager import TradeManager
 from app.engine.explain.collector import ExplainCollector
@@ -30,6 +31,7 @@ class ExecutionSimulator:
         portfolio: PortfolioManager,
         trade_manager: TradeManager,
         order_book: OrderBook,
+        order_service: OrderService,
         warnings: list[str],
         collector: ExplainCollector | None = None,
     ) -> None:
@@ -37,6 +39,7 @@ class ExecutionSimulator:
         self._portfolio = portfolio
         self._trade_manager = trade_manager
         self._order_book = order_book
+        self._order_service = order_service
         self._warnings = warnings
         self._collector = collector
 
@@ -162,6 +165,7 @@ class ExecutionSimulator:
             exit_bar_index=bar_index,
             exit_commission=commission,
             exit_slippage_cost=slippage_cost,
+            metadata=self._order_service.consume_close_metadata(),
         )
         self._mark_filled(order, bar, bar_index, fill_price, commission, slippage_cost)
         if self._collector is not None:

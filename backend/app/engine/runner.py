@@ -21,7 +21,9 @@ from app.engine.execution.trade_manager import TradeManager
 from app.engine.explain import MAX_PER_BAR_EXPLAIN_EVENTS, ExplainCollector
 from app.engine.explain.condition_collector import ConditionCollector
 from app.engine.explain.decision_log import DecisionRecorder
+from app.engine.results.chart_data import TrailingStopCollector
 from app.engine.results.result import ExecutionResult
+from app.engine.strategy.risk import StopLossOverride
 from app.engine.strategy.provider import SourceStrategyProvider, StrategyProvider
 
 
@@ -35,6 +37,14 @@ class ExecutionConfig:
     explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY
     instrument: str | None = None
     timeframe: str | None = None
+    session_timezone: str = "UTC"
+    no_trade_session_dates: frozenset[str] = frozenset()
+    #: Cap new entries per exchange-local session day. ``None`` means unlimited.
+    max_trades_per_day: int | None = None
+    #: Inclusive exchange-local entry window. Both must be set together.
+    entry_window_start: str | None = None
+    entry_window_end: str | None = None
+    stop_loss_override: StopLossOverride | None = None
 
     def __post_init__(self) -> None:
         if self.initial_capital <= 0:
@@ -43,6 +53,14 @@ class ExecutionConfig:
             raise ValueError("commission must not be negative")
         if self.slippage < 0:
             raise ValueError("slippage must not be negative")
+        if self.max_trades_per_day is not None and self.max_trades_per_day < 1:
+            raise ValueError("max_trades_per_day must be at least 1 when set")
+        from app.engine.execution.entry_window import validate_entry_window
+
+        window = validate_entry_window(self.entry_window_start, self.entry_window_end)
+        if window is not None:
+            object.__setattr__(self, "entry_window_start", window[0])
+            object.__setattr__(self, "entry_window_end", window[1])
 
 
 class ExecutionEngine:
@@ -171,7 +189,17 @@ class ExecutionEngine:
             if recorder is not None or (collector is not None and collector.records_bar_events)
             else None
         )
-        order_service = OrderService(order_book, portfolio, warnings, collector=collector)
+        order_service = OrderService(
+            order_book,
+            portfolio,
+            warnings,
+            collector=collector,
+            session_timezone=self.config.session_timezone,
+            no_trade_session_dates=self.config.no_trade_session_dates,
+            max_trades_per_day=self.config.max_trades_per_day,
+            entry_window_start=self.config.entry_window_start,
+            entry_window_end=self.config.entry_window_end,
+        )
         simulator = ExecutionSimulator(
             config=SimulatorConfig(
                 commission=self.config.commission,
@@ -180,15 +208,20 @@ class ExecutionEngine:
             portfolio=portfolio,
             trade_manager=trade_manager,
             order_book=order_book,
+            order_service=order_service,
             warnings=warnings,
             collector=collector,
         )
+        trailing_stop_collector = TrailingStopCollector()
         context = ExecutionContext(
             initial_capital=self.config.initial_capital,
             portfolio=portfolio,
             order_service=order_service,
             logs=logs,
             condition_collector=condition_collector,
+            stop_loss_override=self.config.stop_loss_override,
+            trailing_stop_collector=trailing_stop_collector,
+            trade_manager=trade_manager,
         )
         loaded.bind_context(context)
 
@@ -332,6 +365,7 @@ class ExecutionEngine:
             trade_manager=trade_manager,
             collector=collector,
             recorder=recorder,
+            trailing_stop_collector=trailing_stop_collector,
         )
 
     def _result(
@@ -348,6 +382,7 @@ class ExecutionEngine:
         trade_manager: TradeManager,
         collector: ExplainCollector | None,
         recorder: DecisionRecorder | None = None,
+        trailing_stop_collector: TrailingStopCollector | None = None,
     ) -> ExecutionResult:
         # Every return path in ``run`` funnels through here, which is what makes
         # this the one place guaranteed to close the sink - including the early
@@ -381,4 +416,7 @@ class ExecutionEngine:
             explain_level=self.config.explain_level,
             decision_schema=decision_schema,
             decision_rows=decision_rows,
+            trailing_stop_points=(
+                trailing_stop_collector.points if trailing_stop_collector is not None else ()
+            ),
         )

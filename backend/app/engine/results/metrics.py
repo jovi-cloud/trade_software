@@ -88,6 +88,25 @@ class MetricsEngine:
             if initial_capital > 0
             else 0.0
         )
+        trailing_exits = [
+            trade for trade in trades if (trade.exit_reason or "") == "trailing_stop"
+        ]
+        trailing_count = len(trailing_exits)
+        trailing_profits = [trade.net_pnl for trade in trailing_exits]
+        trailing_winners = [profit for profit in trailing_profits if profit > 0]
+        trailing_average_profit = (
+            round_money(sum(trailing_profits) / trailing_count) if trailing_count else 0.0
+        )
+        trailing_largest = round_money(max(trailing_profits, default=0.0))
+        trailing_smallest = round_money(min(trailing_profits, default=0.0))
+        trailing_win_rate = (
+            round_percent(len(trailing_winners) / trailing_count * 100) if trailing_count else 0.0
+        )
+        trailing_average_bars = (
+            round_money(sum(trade.bars_held for trade in trailing_exits) / trailing_count)
+            if trailing_count
+            else 0.0
+        )
 
         return PerformanceMetrics(
             net_profit=net_profit,
@@ -109,4 +128,10 @@ class MetricsEngine:
             slippage_cost=slippage_cost,
             final_cash=round_money(final_cash),
             return_pct=return_pct,
+            trailing_exit_count=trailing_count,
+            trailing_exit_average_profit=trailing_average_profit,
+            trailing_exit_largest_profit=trailing_largest,
+            trailing_exit_smallest_profit=trailing_smallest,
+            trailing_exit_win_rate_pct=trailing_win_rate,
+            trailing_exit_average_bars_held=trailing_average_bars,
         )

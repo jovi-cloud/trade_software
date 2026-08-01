@@ -8,7 +8,7 @@ from app.domain.decisions import DecisionSchema
 from app.domain.explain import ExplainEvent, ExplainLevel
 from app.engine.execution.order import Order
 from app.engine.execution.trade import Trade
-from app.engine.results.chart_data import Candle, TradeMarker
+from app.engine.results.chart_data import Candle, TradeMarker, TrailingStopPoint
 from app.engine.results.metrics_result import EquityPoint, PerformanceMetrics
 
 
@@ -33,6 +33,7 @@ class ExecutionResult:
     candles: tuple[Candle, ...] = field(default_factory=tuple)
     entry_markers: tuple[TradeMarker, ...] = field(default_factory=tuple)
     exit_markers: tuple[TradeMarker, ...] = field(default_factory=tuple)
+    trailing_stop_points: tuple[TrailingStopPoint, ...] = field(default_factory=tuple)
     explain_events: tuple[ExplainEvent, ...] = field(default_factory=tuple)
     explain_level: ExplainLevel = ExplainLevel.NONE
     #: Column layout of the per-bar decision log, when one was written. The rows

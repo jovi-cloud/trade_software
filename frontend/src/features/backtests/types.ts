@@ -23,6 +23,7 @@ export type ExecutionResult = Pick<
   | 'candles'
   | 'entry_markers'
   | 'exit_markers'
+  | 'trailing_stop_points'
   | 'explain_level'
 > & {
   run_id?: string | null

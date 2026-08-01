@@ -17,6 +17,7 @@ from app.schemas.backtest import (
     PerformanceMetricsRead,
     TradeMarkerRead,
     TradeRead,
+    TrailingStopPointRead,
 )
 from app.schemas.explain import ExplainEventRead
 
@@ -70,6 +71,10 @@ def execution_result_read(
         ],
         exit_markers=[
             TradeMarkerRead.model_validate(asdict(marker)) for marker in result.exit_markers
+        ],
+        trailing_stop_points=[
+            TrailingStopPointRead.model_validate(asdict(point))
+            for point in result.trailing_stop_points
         ],
         explain_events=[
             ExplainEventRead.model_validate(event_to_dict(event)) for event in result.explain_events

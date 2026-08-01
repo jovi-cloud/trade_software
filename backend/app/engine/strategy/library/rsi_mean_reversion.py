@@ -27,6 +27,7 @@ from app.engine.strategy.library._shared import (
     percent_risk,
     percent_stop_params,
     period_param,
+    trailing_stop_params,
 )
 from app.engine.strategy.metadata import (
     ChangelogEntry,
@@ -197,6 +198,7 @@ class RsiMeanReversionStrategy(StrategyBase):
         *percent_stop_params(stop_default=3.0, target_default=0.0),
         max_bars_param(default=20),
         fractional_param(),
+        *trailing_stop_params(),
     )
 
     def declare_indicators(self) -> Mapping[str, Indicator]:

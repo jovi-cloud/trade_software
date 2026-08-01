@@ -46,6 +46,17 @@ class BacktestJobService:
             explain_level=payload.explain_level,
             dataset_version_id=payload.dataset_version_id,
             dataset_version_number=payload.dataset_version_number,
+            skip_trades_on_price_anomaly_days=payload.skip_trades_on_price_anomaly_days,
+            skip_trades_on_intraday_anomalies_10pct=payload.skip_trades_on_intraday_anomalies_10pct,
+            skip_trades_on_intraday_anomalies_20pct=payload.skip_trades_on_intraday_anomalies_20pct,
+            skip_trades_on_cross_day_anomalies_10pct=payload.skip_trades_on_cross_day_anomalies_10pct,
+            skip_trades_on_cross_day_anomalies_20pct=payload.skip_trades_on_cross_day_anomalies_20pct,
+            max_trades_per_day=payload.max_trades_per_day,
+            entry_window_start=payload.entry_window_start,
+            entry_window_end=payload.entry_window_end,
+            override_stop_loss=payload.override_stop_loss,
+            stop_loss_override_mode=payload.stop_loss_override_mode,
+            stop_loss_value=payload.stop_loss_value,
         )
         started_at = utcnow()
 

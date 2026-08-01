@@ -19,6 +19,7 @@ from app.schemas.backtest import (
     PerformanceMetricsRead,
     TradeMarkerRead,
     TradeRead,
+    TrailingStopPointRead,
 )
 from app.schemas.explain import ExplainEventRead
 from app.services.backtest_run_research import research_completion_pct, research_timeline
@@ -134,6 +135,7 @@ class BacktestRunRead(BaseModel):
     equity_history: list[EquityPointRead]
     entry_markers: list[TradeMarkerRead]
     exit_markers: list[TradeMarkerRead]
+    trailing_stop_points: list[TrailingStopPointRead] = Field(default_factory=list)
     candles: list[CandleRead]
     orders: list[OrderRead]
     trades: list[TradeRead]
@@ -251,6 +253,10 @@ def read_from_row(
     exit_markers = [
         TradeMarkerRead.model_validate(item) for item in json.loads(run.exit_markers_json)
     ]
+    trailing_stop_points = [
+        TrailingStopPointRead.model_validate(item)
+        for item in json.loads(run.trailing_stop_points_json or "[]")
+    ]
     timeline = research_timeline(run)
     research = research_fields_from_row(run)
     return BacktestRunRead(
@@ -289,6 +295,7 @@ def read_from_row(
         equity_history=equity_history,
         entry_markers=entry_markers,
         exit_markers=exit_markers,
+        trailing_stop_points=trailing_stop_points,
         candles=[CandleRead.model_validate(item) for item in json.loads(run.candles_json)],
         orders=[OrderRead.model_validate(item) for item in json.loads(run.orders_json)],
         trades=[TradeRead.model_validate(item) for item in json.loads(run.trades_json)],

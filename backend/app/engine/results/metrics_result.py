@@ -37,3 +37,9 @@ class PerformanceMetrics:
     slippage_cost: float
     final_cash: float
     return_pct: float
+    trailing_exit_count: int = 0
+    trailing_exit_average_profit: float = 0.0
+    trailing_exit_largest_profit: float = 0.0
+    trailing_exit_smallest_profit: float = 0.0
+    trailing_exit_win_rate_pct: float = 0.0
+    trailing_exit_average_bars_held: float = 0.0

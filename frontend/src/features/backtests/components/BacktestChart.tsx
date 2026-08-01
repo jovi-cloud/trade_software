@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { LineSeries, type ISeriesApi } from 'lightweight-charts'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEventParams } from 'lightweight-charts'
 
 import { ChartContainer } from '@/components/charts/ChartContainer'
-import { candlesToSeriesData, chartTimeToEpochMs } from '@/components/charts/seriesHelpers'
+import {
+  candlesToSeriesData,
+  chartTimeToEpochMs,
+  trailingStopToSeriesData,
+} from '@/components/charts/seriesHelpers'
 import { useCandlestickSeries, useLightweightChart } from '@/components/charts/useLightweightChart'
 import { useTheme } from '@/hooks/useTheme'
 import { formatNumber, formatTimestamp } from '@/lib/format'
@@ -31,6 +36,7 @@ export function BacktestChart({ result, onBarSelect, selectedBarIndex }: Backtes
   const { theme } = useTheme()
   const { containerRef, chartRef } = useLightweightChart(theme)
   const { seriesRef, markersRef } = useCandlestickSeries(chartRef, theme)
+  const trailingSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [localTradeSeq, setLocalTradeSeq] = useState<number | null>(null)
 
@@ -42,6 +48,11 @@ export function BacktestChart({ result, onBarSelect, selectedBarIndex }: Backtes
   const markerLookup = useMemo(
     () => buildMarkerTradeLookup(result.entry_markers, result.exit_markers),
     [result.entry_markers, result.exit_markers],
+  )
+  const trailingStopData = useMemo(
+    () =>
+      trailingStopToSeriesData(result.trailing_stop_points ?? [], localTradeSeq ?? null),
+    [localTradeSeq, result.trailing_stop_points],
   )
   const candleIndexByTime = useMemo(() => {
     const map = new Map<number, number>()
@@ -58,6 +69,25 @@ export function BacktestChart({ result, onBarSelect, selectedBarIndex }: Backtes
       : (result.trades.find((trade) => trade.seq === activeTradeSeq) ?? null)
 
   useEffect(() => {
+    const chart = chartRef.current
+    if (!chart || trailingSeriesRef.current) return
+
+    const isDark = theme === 'dark'
+    const series = chart.addSeries(LineSeries, {
+      color: isDark ? '#fbbf24' : '#d97706',
+      lineWidth: 2,
+      lineStyle: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })
+    trailingSeriesRef.current = series
+
+    return () => {
+      trailingSeriesRef.current = null
+    }
+  }, [chartRef, theme])
+
+  useEffect(() => {
     const series = seriesRef.current
     if (!series) return
     series.setData(candleData)
@@ -67,6 +97,12 @@ export function BacktestChart({ result, onBarSelect, selectedBarIndex }: Backtes
   useEffect(() => {
     markersRef.current?.setMarkers(markers)
   }, [markers, markersRef])
+
+  useEffect(() => {
+    const series = trailingSeriesRef.current
+    if (!series) return
+    series.setData(trailingStopData)
+  }, [trailingStopData])
 
   useEffect(() => {
     const chart = chartRef.current
@@ -131,6 +167,11 @@ export function BacktestChart({ result, onBarSelect, selectedBarIndex }: Backtes
         {selectedBarIndex !== null && selectedBarIndex !== undefined && (
           <div className="absolute left-3 top-3 rounded-md border border-primary/40 bg-background/90 px-2 py-1 text-xs">
             Inspecting bar {selectedBarIndex + 1}
+          </div>
+        )}
+        {(result.trailing_stop_points?.length ?? 0) > 0 && (
+          <div className="absolute right-3 top-3 rounded-md border border-amber-500/40 bg-background/90 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
+            Dashed line: trailing stop
           </div>
         )}
         {tooltip && (

@@ -31,6 +31,7 @@ from app.engine.strategy.library._shared import (
     percent_risk,
     percent_stop_params,
     period_param,
+    trailing_stop_params,
 )
 from app.engine.strategy.metadata import (
     ChangelogEntry,
@@ -171,6 +172,7 @@ class SuperTrendStrategy(StrategyBase):
         *percent_stop_params(stop_default=0.0, target_default=0.0),
         max_bars_param(),
         fractional_param(),
+        *trailing_stop_params(),
     )
 
     def declare_indicators(self) -> Mapping[str, Indicator]:

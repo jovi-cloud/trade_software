@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.domain.enums import PositionSide
 from app.domain.money import mul_money, round_money
+from app.engine.execution.close_metadata import TradeCloseMetadata
 from app.engine.execution.position import Position
 from app.engine.execution.trade import Trade
 
@@ -32,6 +33,7 @@ class TradeManager:
         exit_bar_index: int,
         exit_commission: float,
         exit_slippage_cost: float,
+        metadata: TradeCloseMetadata | None = None,
     ) -> Trade:
         quantity = position.quantity
         bars_held = max(exit_bar_index - position.entry_bar_index, 1)
@@ -59,6 +61,15 @@ class TradeManager:
             slippage_cost=total_slippage,
             net_pnl=net_pnl,
             bars_held=bars_held,
+            exit_reason=None if metadata is None else metadata.exit_reason,
+            initial_stop_level=None if metadata is None else metadata.initial_stop_level,
+            trailing_stop_at_exit=None if metadata is None else metadata.trailing_stop_at_exit,
+            highest_price_reached=None if metadata is None else metadata.highest_price_reached,
+            lowest_price_reached=None if metadata is None else metadata.lowest_price_reached,
+            max_favorable_excursion=None if metadata is None else metadata.max_favorable_excursion,
+            max_adverse_excursion=None if metadata is None else metadata.max_adverse_excursion,
+            max_profit=None if metadata is None else metadata.max_profit,
+            max_drawdown_in_trade=None if metadata is None else metadata.max_drawdown_in_trade,
         )
         self._next_seq += 1
         self._trades.append(trade)

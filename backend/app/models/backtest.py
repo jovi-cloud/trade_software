@@ -74,6 +74,7 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     equity_history_json: Mapped[str] = mapped_column(Text, nullable=False)
     entry_markers_json: Mapped[str] = mapped_column(Text, nullable=False)
     exit_markers_json: Mapped[str] = mapped_column(Text, nullable=False)
+    trailing_stop_points_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     candles_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     orders_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     trades_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")

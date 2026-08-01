@@ -172,6 +172,9 @@ describe('submitting', () => {
       { initialCapital: 100_000, commission: 0, slippage: 0 },
       'full',
       null,
+      null,
+      null,
+      null,
     )
 
     expect(input.strategy_id).toBeUndefined()
@@ -193,6 +196,9 @@ describe('submitting', () => {
       state,
       { initialCapital: 100_000, commission: 0, slippage: 0 },
       'trades_only',
+      null,
+      null,
+      null,
       null,
     )
 

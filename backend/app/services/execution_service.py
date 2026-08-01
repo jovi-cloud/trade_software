@@ -19,6 +19,10 @@ from app.core.exceptions import JobCancelledError, NotFoundError, ValidationErro
 from app.core.ids import new_id
 from app.core.paths import DataPaths
 from app.data.decision_store import ParquetDecisionSink
+from app.data.data_pipeline.price_anomaly_days import (
+    PriceAnomalyTradeSkipOptions,
+    resolve_no_trade_days,
+)
 from app.data.errors import InvalidBarsError
 from app.data.loader import bar_timestamp_at, iter_bar_rows, load_bar_frame
 from app.domain.enums import (
@@ -31,7 +35,7 @@ from app.domain.explain import ExplainLevel
 from app.engine.bars import BarIterator, bar_from_row
 from app.engine.explain import MAX_PER_BAR_EXPLAIN_EVENTS
 from app.engine.explain.timeline import assemble_timeline, service_collector
-from app.engine.results.chart_data import CandleCollector, ChartDataBuilder
+from app.engine.results.chart_data import CandleCollector, ChartDataBuilder, TrailingStopCollector
 from app.engine.results.result import ExecutionResult
 from app.engine.runner import ExecutionConfig, ExecutionEngine
 from app.engine.strategy.definition import StrategyDefinition
@@ -41,6 +45,7 @@ from app.engine.strategy.provider import (
     SourceStrategyProvider,
     StrategyProvider,
 )
+from app.engine.strategy.risk import StopLossOverride
 from app.models.dataset_version import DatasetVersion
 from app.models.strategy import Strategy
 from app.repositories.dataset_repo import DatasetRepository
@@ -137,6 +142,12 @@ class ExecutionService:
         explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY,
         instrument: str | None = None,
         timeframe: str | None = None,
+        session_timezone: str = "UTC",
+        no_trade_session_dates: frozenset[str] | None = None,
+        max_trades_per_day: int | None = None,
+        entry_window_start: str | None = None,
+        entry_window_end: str | None = None,
+        stop_loss_override: StopLossOverride | None = None,
     ) -> ExecutionConfig:
         return ExecutionConfig(
             initial_capital=initial_capital,
@@ -145,7 +156,28 @@ class ExecutionService:
             explain_level=explain_level,
             instrument=instrument,
             timeframe=timeframe,
+            session_timezone=session_timezone,
+            no_trade_session_dates=no_trade_session_dates or frozenset(),
+            max_trades_per_day=max_trades_per_day,
+            entry_window_start=entry_window_start,
+            entry_window_end=entry_window_end,
+            stop_loss_override=stop_loss_override,
         )
+
+    @staticmethod
+    def resolve_stop_loss_override(
+        *,
+        override_stop_loss: bool,
+        stop_loss_override_mode: str | None,
+        stop_loss_value: float | None,
+    ) -> StopLossOverride | None:
+        if not override_stop_loss or stop_loss_override_mode is None:
+            return None
+        if stop_loss_override_mode == "disabled":
+            return StopLossOverride(mode="disabled")
+        if stop_loss_override_mode == "percent":
+            return StopLossOverride(mode="percent", percent=stop_loss_value)
+        return StopLossOverride(mode="atr", atr_multiple=stop_loss_value)
 
     def plan(
         self,
@@ -160,6 +192,17 @@ class ExecutionService:
         explain_level: ExplainLevel | None = None,
         dataset_version_id: str | None = None,
         dataset_version_number: int | None = None,
+        skip_trades_on_price_anomaly_days: bool = False,
+        skip_trades_on_intraday_anomalies_10pct: bool = True,
+        skip_trades_on_intraday_anomalies_20pct: bool = True,
+        skip_trades_on_cross_day_anomalies_10pct: bool = True,
+        skip_trades_on_cross_day_anomalies_20pct: bool = True,
+        max_trades_per_day: int | None = None,
+        entry_window_start: str | None = None,
+        entry_window_end: str | None = None,
+        override_stop_loss: bool = False,
+        stop_loss_override_mode: str | None = None,
+        stop_loss_value: float | None = None,
     ) -> RunPlan:
         """Resolve one run request into something the engine can be handed.
 
@@ -186,6 +229,18 @@ class ExecutionService:
         container_id = self.resolve_container(
             strategy_id=strategy_id, library_strategy_id=library_strategy_id
         )
+        no_trade_days = frozenset[str]()
+        if skip_trades_on_price_anomaly_days:
+            version_row = self.version_repo.get(dataset_version.id)
+            no_trade_days = resolve_no_trade_days(
+                version_row.report_json if version_row is not None else None,
+                options=PriceAnomalyTradeSkipOptions(
+                    intraday_over_10pct=skip_trades_on_intraday_anomalies_10pct,
+                    intraday_over_20pct=skip_trades_on_intraday_anomalies_20pct,
+                    cross_day_over_10pct=skip_trades_on_cross_day_anomalies_10pct,
+                    cross_day_over_20pct=skip_trades_on_cross_day_anomalies_20pct,
+                ),
+            )
         config = self.build_config(
             initial_capital=initial_capital,
             commission=commission,
@@ -199,6 +254,16 @@ class ExecutionService:
             ),
             instrument=dataset.name,
             timeframe=dataset.timeframe,
+            session_timezone=dataset.timezone,
+            no_trade_session_dates=no_trade_days,
+            max_trades_per_day=max_trades_per_day,
+            entry_window_start=entry_window_start,
+            entry_window_end=entry_window_end,
+            stop_loss_override=self.resolve_stop_loss_override(
+                override_stop_loss=override_stop_loss,
+                stop_loss_override_mode=stop_loss_override_mode,
+                stop_loss_value=stop_loss_value,
+            ),
         )
         return RunPlan(
             strategy_id=container_id,
@@ -383,6 +448,56 @@ class ExecutionService:
             should_cancel=should_cancel,
             decision_sink=decision_sink,
         )
+        if config.no_trade_session_dates:
+            result = replace(
+                result,
+                warnings=(
+                    *result.warnings,
+                    (
+                        "New entries were disabled on "
+                        f"{len(config.no_trade_session_dates)} session day(s) flagged for "
+                        "price anomalies. Bars were still replayed; exits were allowed."
+                    ),
+                ),
+            )
+        if config.max_trades_per_day is not None:
+            result = replace(
+                result,
+                warnings=(
+                    *result.warnings,
+                    (
+                        f"New entries were capped at {config.max_trades_per_day} per "
+                        "exchange-local session day. Exits were still allowed."
+                    ),
+                ),
+            )
+        if config.entry_window_start is not None and config.entry_window_end is not None:
+            result = replace(
+                result,
+                warnings=(
+                    *result.warnings,
+                    (
+                        "New entries were limited to exchange-local "
+                        f"{config.entry_window_start}–{config.entry_window_end}. "
+                        "Exits were still allowed."
+                    ),
+                ),
+            )
+        if config.stop_loss_override is not None:
+            override = config.stop_loss_override
+            if override.mode == "disabled":
+                message = "The strategy stop loss was disabled for this run."
+            elif override.mode == "percent":
+                message = (
+                    f"The strategy stop loss was overridden to {override.percent:g}% "
+                    "of entry price for this run."
+                )
+            else:
+                message = (
+                    f"The strategy stop loss was overridden to {override.atr_multiple:g}x "
+                    "ATR at entry for this run."
+                )
+            result = replace(result, warnings=(*result.warnings, message))
         if should_cancel is not None and should_cancel():
             raise JobCancelledError("Backtest cancelled")
         enriched = self.metrics_service.enrich(result, initial_capital=config.initial_capital)

@@ -6,11 +6,18 @@ here are queued and filled at the next bar's open (ARCHITECTURE.md 2.2).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from app.engine.bars import Bar
 from app.engine.execution.order_service import OrderService
 from app.engine.execution.portfolio import PortfolioManager
 from app.engine.execution.position import PositionView
+from app.engine.execution.trade_manager import TradeManager
 from app.engine.explain.condition_collector import ConditionCollector
+from app.engine.results.chart_data import TrailingStopCollector
+
+if TYPE_CHECKING:
+    from app.engine.strategy.risk import StopLossOverride
 
 # A strategy logging on every bar of a multi-million-bar dataset would
 # otherwise exhaust memory, so the sink is bounded and reports truncation.
@@ -47,12 +54,18 @@ class ExecutionContext:
         order_service: OrderService,
         logs: LogCollector,
         condition_collector: ConditionCollector | None = None,
+        stop_loss_override: StopLossOverride | None = None,
+        trailing_stop_collector: TrailingStopCollector | None = None,
+        trade_manager: TradeManager | None = None,
     ) -> None:
         self._initial_capital = initial_capital
         self._portfolio = portfolio
         self._order_service = order_service
         self._logs = logs
         self._condition_collector = condition_collector
+        self.stop_loss_override = stop_loss_override
+        self.trailing_stop_collector = trailing_stop_collector
+        self._trade_manager = trade_manager
         self._current_bar: Bar | None = None
         self._current_bar_index = -1
 
@@ -78,6 +91,13 @@ class ExecutionContext:
     def position(self) -> PositionView | None:
         return self._portfolio.position_view()
 
+    @property
+    def pending_trade_seq(self) -> int:
+        """Sequence number the next closed trade will receive."""
+        if self._trade_manager is None:
+            return 1
+        return self._trade_manager.trade_count + 1
+
     def buy(self, quantity: float = 1.0) -> None:
         """Submit a market buy to open a long position on the next bar open."""
         self._order_service.buy(quantity)
@@ -86,9 +106,9 @@ class ExecutionContext:
         """Submit a market sell to open a short position on the next bar open."""
         self._order_service.sell(quantity)
 
-    def close(self) -> None:
+    def close(self, *, exit_reason: str | None = None, risk_state: object | None = None) -> None:
         """Submit a market order to close the open position on the next bar open."""
-        self._order_service.close()
+        self._order_service.close(exit_reason=exit_reason, risk_state=risk_state)
 
     def log(self, *parts: object) -> None:
         """Record a message against this run. Appears in ``strategy_logs``."""

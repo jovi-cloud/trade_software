@@ -22,6 +22,7 @@ export function backtestRunToExecutionResult(run: BacktestRun): ExecutionResult 
     candles: run.candles,
     entry_markers: run.entry_markers,
     exit_markers: run.exit_markers,
+    trailing_stop_points: run.trailing_stop_points ?? [],
     // The run's lifecycle only. Per-bar and per-trade events are paged in by
     // the Event Explorer rather than inlined on the run.
     explain_events: run.lifecycle_events ?? [],

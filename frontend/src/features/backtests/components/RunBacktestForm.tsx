@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useDatasetVersions, useDatasets } from '@/features/datasets/queries'
+import { useDatasetVersions, useDatasets, useDataset } from '@/features/datasets/queries'
 import { useStrategies } from '@/features/strategies/queries'
 import { useLibraryStrategies } from '@/features/strategy-library/queries'
 import type {
@@ -23,6 +23,9 @@ import { cn } from '@/lib/utils'
 import {
   missingRequirements,
   parseMaxBars,
+  parseMaxTradesPerDay,
+  parseEntryWindow,
+  parseStopLossOverride,
   parseNumericSettings,
   resolveExplainLevel,
   selectLibraryStrategy,
@@ -48,6 +51,7 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
   const library = useLibraryStrategies({ limit: LIST_LIMIT, valid_only: true })
   const strategies = useStrategies({ limit: 100, sort: 'name', order: 'asc' })
   const datasets = useDatasets({ limit: 100, sort: 'name', order: 'asc' })
+  const { data: datasetDetail } = useDataset(state.datasetId)
   const { data: datasetVersions = [] } = useDatasetVersions(state.datasetId)
 
   const [selected, setSelected] = useState<LibraryStrategy | null>(null)
@@ -65,6 +69,15 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
   )
 
   const selectedDataset = readyDatasets.find((dataset) => dataset.id === state.datasetId)
+  const selectedVersion =
+    state.datasetVersionNumber !== null
+      ? datasetVersions.find((version) => version.version_number === state.datasetVersionNumber)
+      : null
+  const pipelineReport =
+    selectedVersion?.pipeline_report ??
+    datasetDetail?.pipeline_report ??
+    selectedDataset?.pipeline_report ??
+    null
 
   // The strategy detail arrives asynchronously; until it does there is no
   // recommendation to apply and the stored level stands.
@@ -112,8 +125,27 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
     const maxBars = parseMaxBars(state)
     if (!maxBars.ok) return setFieldError(maxBars.error)
 
+    const maxTradesPerDay = parseMaxTradesPerDay(state)
+    if (!maxTradesPerDay.ok) return setFieldError(maxTradesPerDay.error)
+
+    const entryWindow = parseEntryWindow(state)
+    if (!entryWindow.ok) return setFieldError(entryWindow.error)
+
+    const stopLossOverride = parseStopLossOverride(state)
+    if (!stopLossOverride.ok) return setFieldError(stopLossOverride.error)
+
     setFieldError(null)
-    await onSubmit(toExecuteInput(state, settings.values, explainLevel, maxBars.value))
+    await onSubmit(
+      toExecuteInput(
+        state,
+        settings.values,
+        explainLevel,
+        maxBars.value,
+        maxTradesPerDay.value,
+        entryWindow.value,
+        stopLossOverride.value,
+      ),
+    )
   }
 
   if (strategies.isLoading || datasets.isLoading || library.isLoading) {
@@ -248,6 +280,10 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
         supportsConditionTracing={supportsTracing}
         isRecommendedLevel={!state.explainLevelChosen}
         datasetBarCount={selectedDataset?.row_count}
+        pipelineReport={pipelineReport}
+        sessionOpen={datasetDetail?.session_open ?? selectedDataset?.session_open}
+        sessionClose={datasetDetail?.session_close ?? selectedDataset?.session_close}
+        showStopLossOverride={state.source === 'library'}
         onChange={patch}
       />
 

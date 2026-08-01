@@ -32,6 +32,7 @@ from app.engine.strategy.library._shared import (
     less_than,
     max_bars_param,
     period_param,
+    trailing_stop_params,
 )
 from app.engine.strategy.metadata import (
     ChangelogEntry,
@@ -194,6 +195,7 @@ class MovingAveragePullbackStrategy(StrategyBase):
         *atr_stop_params(stop_default=2.0, target_default=3.0),
         max_bars_param(),
         fractional_param(),
+        *trailing_stop_params(),
     )
 
     def __init__(self, params: Mapping[str, object] | None = None) -> None:

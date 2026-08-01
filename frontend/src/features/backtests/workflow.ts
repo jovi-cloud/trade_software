@@ -25,6 +25,11 @@ export const DEFAULT_CAPITAL = '100000'
 export const DEFAULT_COMMISSION = '0'
 export const DEFAULT_SLIPPAGE = '0'
 export const DEFAULT_MAX_BARS = '500'
+export const DEFAULT_MAX_TRADES_PER_DAY = '1'
+export const DEFAULT_ENTRY_WINDOW_START = '09:15'
+export const DEFAULT_ENTRY_WINDOW_END = '15:25'
+export const DEFAULT_STOP_LOSS_PERCENT = '2'
+export const DEFAULT_STOP_LOSS_ATR = '2'
 
 export interface WorkflowState {
   source: StrategySource
@@ -49,6 +54,20 @@ export interface WorkflowState {
   limitBars: boolean
   /** Numeric field kept as a string so a half-typed value is not clobbered. */
   maxBars: string
+  skipTradesOnPriceAnomalyDays: boolean
+  skipTradesOnIntradayAnomalies10pct: boolean
+  skipTradesOnIntradayAnomalies20pct: boolean
+  skipTradesOnCrossDayAnomalies10pct: boolean
+  skipTradesOnCrossDayAnomalies20pct: boolean
+  /** When true, cap new entries per exchange-local session day. */
+  limitMaxTradesPerDay: boolean
+  maxTradesPerDay: string
+  limitEntryWindow: boolean
+  entryWindowStart: string
+  entryWindowEnd: string
+  overrideStopLoss: boolean
+  stopLossOverrideMode: 'percent' | 'atr' | 'disabled'
+  stopLossValue: string
 }
 
 export function createInitialWorkflow(): WorkflowState {
@@ -66,6 +85,19 @@ export function createInitialWorkflow(): WorkflowState {
     explainLevelChosen: false,
     limitBars: false,
     maxBars: DEFAULT_MAX_BARS,
+    skipTradesOnPriceAnomalyDays: false,
+    skipTradesOnIntradayAnomalies10pct: true,
+    skipTradesOnIntradayAnomalies20pct: true,
+    skipTradesOnCrossDayAnomalies10pct: true,
+    skipTradesOnCrossDayAnomalies20pct: true,
+    limitMaxTradesPerDay: false,
+    maxTradesPerDay: DEFAULT_MAX_TRADES_PER_DAY,
+    limitEntryWindow: false,
+    entryWindowStart: DEFAULT_ENTRY_WINDOW_START,
+    entryWindowEnd: DEFAULT_ENTRY_WINDOW_END,
+    overrideStopLoss: false,
+    stopLossOverrideMode: 'percent',
+    stopLossValue: DEFAULT_STOP_LOSS_PERCENT,
   }
 }
 
@@ -190,6 +222,67 @@ export function parseMaxBars(
   return { ok: true, value: maxBars }
 }
 
+/** Parse the optional daily entry cap, or explain what is wrong with it. */
+export function parseMaxTradesPerDay(
+  state: WorkflowState,
+): { ok: false; error: string } | { ok: true; value: number | null } {
+  if (!state.limitMaxTradesPerDay) return { ok: true, value: null }
+  const maxTradesPerDay = Number(state.maxTradesPerDay)
+  if (!Number.isFinite(maxTradesPerDay) || maxTradesPerDay < 1 || !Number.isInteger(maxTradesPerDay)) {
+    return { ok: false, error: 'Max trades per day must be a whole number of at least 1.' }
+  }
+  return { ok: true, value: maxTradesPerDay }
+}
+
+const HHMM_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+
+/** Parse the optional entry window, or explain what is wrong with it. */
+export function parseEntryWindow(
+  state: WorkflowState,
+): { ok: false; error: string } | { ok: true; value: { start: string; end: string } | null } {
+  if (!state.limitEntryWindow) return { ok: true, value: null }
+  const start = state.entryWindowStart.trim()
+  const end = state.entryWindowEnd.trim()
+  if (!HHMM_PATTERN.test(start) || !HHMM_PATTERN.test(end)) {
+    return {
+      ok: false,
+      error: 'Trading window times must use 24-hour HH:MM format (for example 09:15).',
+    }
+  }
+  const startMinutes = Number(start.slice(0, 2)) * 60 + Number(start.slice(3, 5))
+  const endMinutes = Number(end.slice(0, 2)) * 60 + Number(end.slice(3, 5))
+  if (startMinutes > endMinutes) {
+    return { ok: false, error: 'Trading window start must be at or before the end time.' }
+  }
+  return { ok: true, value: { start, end } }
+}
+
+export type StopLossOverrideInput = {
+  mode: 'percent' | 'atr' | 'disabled'
+  value?: number
+}
+
+/** Parse the optional stop-loss override for library strategy runs. */
+export function parseStopLossOverride(
+  state: WorkflowState,
+): { ok: false; error: string } | { ok: true; value: StopLossOverrideInput | null } {
+  if (!state.overrideStopLoss) return { ok: true, value: null }
+  if (state.stopLossOverrideMode === 'disabled') {
+    return { ok: true, value: { mode: 'disabled' } }
+  }
+  const value = Number(state.stopLossValue)
+  if (!Number.isFinite(value) || value <= 0) {
+    return { ok: false, error: 'Stop loss value must be a positive number.' }
+  }
+  if (state.stopLossOverrideMode === 'percent' && value > 25) {
+    return { ok: false, error: 'Percent stop loss cannot exceed 25%.' }
+  }
+  if (state.stopLossOverrideMode === 'atr' && value > 10) {
+    return { ok: false, error: 'ATR stop multiple cannot exceed 10.' }
+  }
+  return { ok: true, value: { mode: state.stopLossOverrideMode, value } }
+}
+
 export type ExecuteInput = components['schemas']['BacktestExecuteRequest']
 
 /**
@@ -204,6 +297,9 @@ export function toExecuteInput(
   values: NumericSettings,
   explainLevel: ExplainLevel,
   maxBars: number | null,
+  maxTradesPerDay: number | null,
+  entryWindow: { start: string; end: string } | null,
+  stopLossOverride: StopLossOverrideInput | null,
 ): ExecuteInput {
   const shared = {
     dataset_id: state.datasetId,
@@ -215,6 +311,31 @@ export function toExecuteInput(
     slippage: values.slippage,
     explain_level: explainLevel,
     ...(maxBars !== null ? { max_bars: maxBars } : {}),
+    ...(maxTradesPerDay !== null ? { max_trades_per_day: maxTradesPerDay } : {}),
+    ...(entryWindow !== null
+      ? {
+          entry_window_start: entryWindow.start,
+          entry_window_end: entryWindow.end,
+        }
+      : {}),
+    ...(stopLossOverride !== null
+      ? {
+          override_stop_loss: true,
+          stop_loss_override_mode: stopLossOverride.mode,
+          ...(stopLossOverride.value !== undefined
+            ? { stop_loss_value: stopLossOverride.value }
+            : {}),
+        }
+      : {}),
+    ...(state.skipTradesOnPriceAnomalyDays
+      ? {
+          skip_trades_on_price_anomaly_days: true,
+          skip_trades_on_intraday_anomalies_10pct: state.skipTradesOnIntradayAnomalies10pct,
+          skip_trades_on_intraday_anomalies_20pct: state.skipTradesOnIntradayAnomalies20pct,
+          skip_trades_on_cross_day_anomalies_10pct: state.skipTradesOnCrossDayAnomalies10pct,
+          skip_trades_on_cross_day_anomalies_20pct: state.skipTradesOnCrossDayAnomalies20pct,
+        }
+      : {}),
   }
   if (state.source === 'library') {
     return {

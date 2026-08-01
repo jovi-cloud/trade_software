@@ -440,6 +440,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/datasets/{dataset_id}/clean": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove session violations and save a new dataset version */
+        post: operations["clean_dataset_api_v1_datasets__dataset_id__clean_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets/{dataset_id}/validate": {
         parameters: {
             query?: never;
@@ -466,6 +483,23 @@ export interface paths {
         };
         /** Preview first/last rows without loading the full file */
         get: operations["preview_dataset_api_v1_datasets__dataset_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/bars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Paginated OHLCV bars for browsing a dataset */
+        get: operations["list_dataset_bars_api_v1_datasets__dataset_id__bars_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -503,6 +537,23 @@ export interface paths {
         put?: never;
         /** Compare multiple backtest runs */
         post: operations["compare_backtest_runs_post_api_v1_backtests_runs_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backtests/runs/{run_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a complete backtest run export */
+        get: operations["download_backtest_run_api_v1_backtests_runs__run_id__download_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -815,6 +866,63 @@ export interface components {
              * @description Replay only the first N bars. Useful for quick smoke tests.
              */
             max_bars?: number | null;
+            /**
+             * Skip Trades On Price Anomaly Days
+             * @description Do not open new positions on session days flagged for price anomalies. Bars still replay and exits are allowed.
+             * @default false
+             */
+            skip_trades_on_price_anomaly_days: boolean;
+            /**
+             * Skip Trades On Intraday Anomalies 10Pct
+             * @default true
+             */
+            skip_trades_on_intraday_anomalies_10pct: boolean;
+            /**
+             * Skip Trades On Intraday Anomalies 20Pct
+             * @default true
+             */
+            skip_trades_on_intraday_anomalies_20pct: boolean;
+            /**
+             * Skip Trades On Cross Day Anomalies 10Pct
+             * @default true
+             */
+            skip_trades_on_cross_day_anomalies_10pct: boolean;
+            /**
+             * Skip Trades On Cross Day Anomalies 20Pct
+             * @default true
+             */
+            skip_trades_on_cross_day_anomalies_20pct: boolean;
+            /**
+             * Max Trades Per Day
+             * @description Maximum new positions that may be opened on each exchange-local session day. Omitted means unlimited.
+             */
+            max_trades_per_day?: number | null;
+            /**
+             * Entry Window Start
+             * @description Inclusive exchange-local HH:MM when new entries may begin.
+             */
+            entry_window_start?: string | null;
+            /**
+             * Entry Window End
+             * @description Inclusive exchange-local HH:MM when new entries must stop.
+             */
+            entry_window_end?: string | null;
+            /**
+             * Override Stop Loss
+             * @description Replace the library strategy's declared stop-loss rule for this run. Does not affect hand-written strategies.
+             * @default false
+             */
+            override_stop_loss: boolean;
+            /**
+             * Stop Loss Override Mode
+             * @description Percent of entry, ATR multiple, or disabled.
+             */
+            stop_loss_override_mode?: ("percent" | "atr" | "disabled") | null;
+            /**
+             * Stop Loss Value
+             * @description Stop distance: percent (e.g. 2.0) or ATR multiple (e.g. 1.5).
+             */
+            stop_loss_value?: number | null;
         };
         /**
          * BacktestJobResultRead
@@ -946,7 +1054,7 @@ export interface components {
              * Dataset Timezone
              * @default Asia/Kolkata
              */
-            dataset_timezone?: string;
+            dataset_timezone: string;
             /** Dataset Version Id */
             dataset_version_id?: string | null;
             /** Dataset Version Number */
@@ -1013,6 +1121,8 @@ export interface components {
             entry_markers: components["schemas"]["TradeMarkerRead"][];
             /** Exit Markers */
             exit_markers: components["schemas"]["TradeMarkerRead"][];
+            /** Trailing Stop Points */
+            trailing_stop_points?: components["schemas"]["TrailingStopPointRead"][];
             /** Candles */
             candles: components["schemas"]["CandleRead"][];
             /** Orders */
@@ -1310,7 +1420,7 @@ export interface components {
             timeframe?: components["schemas"]["Timeframe"] | null;
             /**
              * Timezone
-             * @default UTC
+             * @default Asia/Kolkata
              */
             timezone: string;
             /**
@@ -1320,7 +1430,7 @@ export interface components {
             session_open: string;
             /**
              * Session Close
-             * @default 15:30
+             * @default 15:25
              */
             session_close: string;
             /** Column Mapping */
@@ -1339,7 +1449,7 @@ export interface components {
             session_open: string;
             /**
              * Session Close
-             * @default 15:30
+             * @default 15:25
              */
             session_close: string;
             /** Column Mapping */
@@ -1535,6 +1645,65 @@ export interface components {
              */
             execution_completed_at: string;
         };
+        /** DatasetBarsPage */
+        DatasetBarsPage: {
+            /** Rows */
+            rows: components["schemas"]["BarRow"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** DatasetCleanRequest */
+        DatasetCleanRequest: {
+            /**
+             * Remove Outside Session
+             * @default true
+             */
+            remove_outside_session: boolean;
+            /**
+             * Remove Weekend Bars
+             * @default true
+             */
+            remove_weekend_bars: boolean;
+            /**
+             * Remove Holiday Bars
+             * @default false
+             */
+            remove_holiday_bars: boolean;
+            /**
+             * Remove Days With Spikes Over 10Pct
+             * @default false
+             */
+            remove_days_with_spikes_over_10pct: boolean;
+            /**
+             * Remove Days With Spikes Over 20Pct
+             * @default false
+             */
+            remove_days_with_spikes_over_20pct: boolean;
+            /**
+             * Remove Intraday Spike Days Over 10Pct
+             * @default false
+             */
+            remove_intraday_spike_days_over_10pct: boolean;
+            /**
+             * Remove Intraday Spike Days Over 20Pct
+             * @default false
+             */
+            remove_intraday_spike_days_over_20pct: boolean;
+            /**
+             * Remove Cross Day Spike Days Over 10Pct
+             * @default false
+             */
+            remove_cross_day_spike_days_over_10pct: boolean;
+            /**
+             * Remove Cross Day Spike Days Over 20Pct
+             * @default false
+             */
+            remove_cross_day_spike_days_over_20pct: boolean;
+        };
         /** DatasetComparisonRowRead */
         DatasetComparisonRowRead: {
             /** Run Id */
@@ -1586,9 +1755,19 @@ export interface components {
             file_hash?: string | null;
             /**
              * Timezone
-             * @default UTC
+             * @default Asia/Kolkata
              */
             timezone: string;
+            /**
+             * Session Open
+             * @default 09:15
+             */
+            session_open: string;
+            /**
+             * Session Close
+             * @default 15:25
+             */
+            session_close: string;
             detected_timeframe?: components["schemas"]["Timeframe"] | null;
             /** Quality Score */
             quality_score?: number | null;
@@ -1632,6 +1811,14 @@ export interface components {
             reference_count: number;
             /** Backtest Runs */
             backtest_runs: components["schemas"]["DatasetBacktestReference"][];
+        };
+        /**
+         * DatasetRevalidateRequest
+         * @description Optional timezone override when re-processing the stored upload.
+         */
+        DatasetRevalidateRequest: {
+            /** Timezone */
+            timezone?: string | null;
         };
         /** DatasetStatisticsRead */
         DatasetStatisticsRead: {
@@ -2775,31 +2962,36 @@ export interface components {
             final_cash: number;
             /** Return Pct */
             return_pct: number;
-        };
-        /** PriceAnomalyReportRead */
-        PriceAnomalyReportRead: {
-            spikes_over_10_pct: number;
-            spikes_over_20_pct: number;
-            cross_day_spikes_over_10_pct: number;
-            cross_day_spikes_over_20_pct: number;
-            days_with_spikes_over_10_pct: number;
-            days_with_spikes_over_20_pct: number;
-            bars_on_days_over_10_pct: number;
-            bars_on_days_over_20_pct: number;
-            intraday_bars_on_days_over_10_pct: number;
-            intraday_bars_on_days_over_20_pct: number;
-            cross_day_bars_on_days_over_10_pct: number;
-            cross_day_bars_on_days_over_20_pct: number;
-            spike_over_10_samples: string[];
-            spike_over_20_samples: string[];
-            cross_day_spike_over_10_samples: string[];
-            cross_day_spike_over_20_samples: string[];
-            intraday_days_over_10_samples: string[];
-            intraday_days_over_20_samples: string[];
-            cross_day_days_over_10_samples: string[];
-            cross_day_days_over_20_samples: string[];
-            days_over_10_samples: string[];
-            days_over_20_samples: string[];
+            /**
+             * Trailing Exit Count
+             * @default 0
+             */
+            trailing_exit_count: number;
+            /**
+             * Trailing Exit Average Profit
+             * @default 0
+             */
+            trailing_exit_average_profit: number;
+            /**
+             * Trailing Exit Largest Profit
+             * @default 0
+             */
+            trailing_exit_largest_profit: number;
+            /**
+             * Trailing Exit Smallest Profit
+             * @default 0
+             */
+            trailing_exit_smallest_profit: number;
+            /**
+             * Trailing Exit Win Rate Pct
+             * @default 0
+             */
+            trailing_exit_win_rate_pct: number;
+            /**
+             * Trailing Exit Average Bars Held
+             * @default 0
+             */
+            trailing_exit_average_bars_held: number;
         };
         /**
          * PipelineReportRead
@@ -2873,6 +3065,119 @@ export interface components {
          * @enum {string}
          */
         PositionSide: "long" | "short";
+        /** PriceAnomalyReportRead */
+        PriceAnomalyReportRead: {
+            /**
+             * Spikes Over 10 Pct
+             * @default 0
+             */
+            spikes_over_10_pct: number;
+            /**
+             * Spikes Over 20 Pct
+             * @default 0
+             */
+            spikes_over_20_pct: number;
+            /**
+             * Cross Day Spikes Over 10 Pct
+             * @default 0
+             */
+            cross_day_spikes_over_10_pct: number;
+            /**
+             * Cross Day Spikes Over 20 Pct
+             * @default 0
+             */
+            cross_day_spikes_over_20_pct: number;
+            /**
+             * Days With Spikes Over 10 Pct
+             * @default 0
+             */
+            days_with_spikes_over_10_pct: number;
+            /**
+             * Days With Spikes Over 20 Pct
+             * @default 0
+             */
+            days_with_spikes_over_20_pct: number;
+            /**
+             * Bars On Days Over 10 Pct
+             * @default 0
+             */
+            bars_on_days_over_10_pct: number;
+            /**
+             * Bars On Days Over 20 Pct
+             * @default 0
+             */
+            bars_on_days_over_20_pct: number;
+            /**
+             * Intraday Bars On Days Over 10 Pct
+             * @default 0
+             */
+            intraday_bars_on_days_over_10_pct: number;
+            /**
+             * Intraday Bars On Days Over 20 Pct
+             * @default 0
+             */
+            intraday_bars_on_days_over_20_pct: number;
+            /**
+             * Cross Day Bars On Days Over 10 Pct
+             * @default 0
+             */
+            cross_day_bars_on_days_over_10_pct: number;
+            /**
+             * Cross Day Bars On Days Over 20 Pct
+             * @default 0
+             */
+            cross_day_bars_on_days_over_20_pct: number;
+            /**
+             * Spike Over 10 Samples
+             * @default []
+             */
+            spike_over_10_samples: string[];
+            /**
+             * Spike Over 20 Samples
+             * @default []
+             */
+            spike_over_20_samples: string[];
+            /**
+             * Cross Day Spike Over 10 Samples
+             * @default []
+             */
+            cross_day_spike_over_10_samples: string[];
+            /**
+             * Cross Day Spike Over 20 Samples
+             * @default []
+             */
+            cross_day_spike_over_20_samples: string[];
+            /**
+             * Intraday Days Over 10 Samples
+             * @default []
+             */
+            intraday_days_over_10_samples: string[];
+            /**
+             * Intraday Days Over 20 Samples
+             * @default []
+             */
+            intraday_days_over_20_samples: string[];
+            /**
+             * Cross Day Days Over 10 Samples
+             * @default []
+             */
+            cross_day_days_over_10_samples: string[];
+            /**
+             * Cross Day Days Over 20 Samples
+             * @default []
+             */
+            cross_day_days_over_20_samples: string[];
+            /**
+             * Days Over 10 Samples
+             * @default []
+             */
+            days_over_10_samples: string[];
+            /**
+             * Days Over 20 Samples
+             * @default []
+             */
+            days_over_20_samples: string[];
+        };
         /**
          * Priority
          * @description How urgently a strategy idea deserves research attention.
@@ -3067,12 +3372,12 @@ export interface components {
              * Unexpected Weekend Samples
              * @default []
              */
-            unexpected_weekend_samples?: string[];
+            unexpected_weekend_samples: string[];
             /**
              * Unexpected Holiday Samples
              * @default []
              */
-            unexpected_holiday_samples?: string[];
+            unexpected_holiday_samples: string[];
         };
         /** StatisticalMetricsRead */
         StatisticalMetricsRead: {
@@ -3509,6 +3814,24 @@ export interface components {
             net_pnl: number;
             /** Bars Held */
             bars_held: number;
+            /** Exit Reason */
+            exit_reason?: string | null;
+            /** Initial Stop Level */
+            initial_stop_level?: number | null;
+            /** Trailing Stop At Exit */
+            trailing_stop_at_exit?: number | null;
+            /** Highest Price Reached */
+            highest_price_reached?: number | null;
+            /** Lowest Price Reached */
+            lowest_price_reached?: number | null;
+            /** Max Favorable Excursion */
+            max_favorable_excursion?: number | null;
+            /** Max Adverse Excursion */
+            max_adverse_excursion?: number | null;
+            /** Max Profit */
+            max_profit?: number | null;
+            /** Max Drawdown In Trade */
+            max_drawdown_in_trade?: number | null;
         };
         /** TradeSummaryRead */
         TradeSummaryRead: {
@@ -3579,6 +3902,15 @@ export interface components {
             message: string;
             /** Related Event Seqs */
             related_event_seqs?: number[];
+        };
+        /** TrailingStopPointRead */
+        TrailingStopPointRead: {
+            /** Ts */
+            ts: number;
+            /** Level */
+            level: number;
+            /** Trade Seq */
+            trade_seq: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -4589,6 +4921,41 @@ export interface operations {
             };
         };
     };
+    clean_dataset_api_v1_datasets__dataset_id__clean_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetCleanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     revalidate_dataset_api_v1_datasets__dataset_id__validate_post: {
         parameters: {
             query?: never;
@@ -4598,7 +4965,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DatasetRevalidateRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4642,6 +5013,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatasetPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_dataset_bars_api_v1_datasets__dataset_id__bars_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+                version?: number | null;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetBarsPage"];
                 };
             };
             /** @description Validation Error */
@@ -4746,6 +5152,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparisonReportRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_backtest_run_api_v1_backtests_runs__run_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

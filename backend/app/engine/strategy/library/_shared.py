@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from app.domain.enums import ParamType, ValidationRuleKind
 from app.engine.indicators.session import SESSION_TIMEZONES
+from app.engine.execution.trailing_stop import TrailingMethod, TrailingStopConfig
 from app.engine.strategy.framework import (
     DIRECTION_BOTH,
     DIRECTION_LONG_ONLY,
@@ -246,6 +247,67 @@ def atr_stop_params(
     )
 
 
+def trailing_stop_params(*, order: int = 35) -> tuple[ParamSpec, ...]:
+    """Unified trailing-stop controls shared by every built-in strategy."""
+    return (
+        ParamSpec(
+            name="enable_trailing_stop",
+            type=ParamType.BOOLEAN,
+            description="Enable a ratcheting trailing stop for this strategy.",
+            default=False,
+            group=GROUP_RISK,
+            display_order=order,
+            tooltip="When off, legacy trailing_stop_pct / trailing_atr_multiple still apply if set.",
+        ),
+        ParamSpec(
+            name="trailing_method",
+            type=ParamType.CHOICE,
+            description="How the trailing distance is measured from the best price reached.",
+            default=TrailingMethod.PERCENT.value,
+            choices=(
+                ParamChoice(TrailingMethod.PERCENT.value, "Percent", "Trail by % of best price"),
+                ParamChoice(TrailingMethod.POINTS.value, "Points", "Trail by fixed price points"),
+                ParamChoice(TrailingMethod.ATR.value, "ATR", "Trail by ATR multiple"),
+            ),
+            group=GROUP_RISK,
+            display_order=order + 1,
+        ),
+        ParamSpec(
+            name="trailing_stop_percent",
+            type=ParamType.PERCENTAGE,
+            description="Trailing distance as a percent of the best price reached.",
+            default=2.0,
+            minimum=0.1,
+            maximum=25.0,
+            step=0.1,
+            group=GROUP_RISK,
+            display_order=order + 2,
+        ),
+        ParamSpec(
+            name="trailing_stop_points",
+            type=ParamType.FLOAT,
+            description="Trailing distance in absolute price points from the best price reached.",
+            default=1.0,
+            minimum=0.01,
+            maximum=10_000.0,
+            step=0.01,
+            group=GROUP_RISK,
+            display_order=order + 3,
+        ),
+        ParamSpec(
+            name="trailing_stop_atr_multiplier",
+            type=ParamType.FLOAT,
+            description="Trailing distance as a multiple of ATR.",
+            default=2.0,
+            minimum=0.1,
+            maximum=10.0,
+            step=0.1,
+            group=GROUP_RISK,
+            display_order=order + 4,
+        ),
+    )
+
+
 def max_bars_param(*, default: int = 0, order: int = 40) -> ParamSpec:
     return ParamSpec(
         name="max_bars_in_trade",
@@ -292,11 +354,13 @@ def percent_risk(
     no_entry_after: str | None = None,
 ) -> RiskRules:
     """Build ``RiskRules`` from the percent-based parameter set."""
+    trailing_config = _trailing_config_from_params(params)
     return RiskRules(
         sizing=sizing or PercentOfEquity(params.number("capital_pct")),
         stop_loss=_percent_or_none(params, "stop_loss_pct"),
         take_profit=_percent_or_none(params, "take_profit_pct"),
-        trailing_stop=_percent_or_none(params, "trailing_stop_pct"),
+        trailing_stop=None if trailing_config else _percent_or_none(params, "trailing_stop_pct"),
+        trailing_config=trailing_config,
         max_bars_in_trade=_positive_or_none(params, "max_bars_in_trade"),
         exit_at_time=exit_at_time,
         no_entry_after=no_entry_after,
@@ -317,11 +381,13 @@ def atr_risk(
     if stop is not None:
         multiple = params.number("target_r_multiple")
         target = RMultipleDistance(multiple) if multiple > 0 else None
+    trailing_config = _trailing_config_from_params(params)
     return RiskRules(
         sizing=sizing or PercentOfEquity(params.number("capital_pct")),
         stop_loss=stop,
         take_profit=target,
-        trailing_stop=_atr_or_none(params, "trailing_atr_multiple"),
+        trailing_stop=None if trailing_config else _atr_or_none(params, "trailing_atr_multiple"),
+        trailing_config=trailing_config,
         max_bars_in_trade=_positive_or_none(params, "max_bars_in_trade"),
         exit_at_time=exit_at_time,
         no_entry_after=no_entry_after,
@@ -353,3 +419,17 @@ def _positive_or_none(params: ParamValues, name: str) -> int | None:
 
 def _flag(params: ParamValues, name: str) -> bool:
     return params.flag(name) if name in params else False
+
+
+def _trailing_config_from_params(params: ParamValues) -> TrailingStopConfig | None:
+    if "enable_trailing_stop" not in params or not params.flag("enable_trailing_stop"):
+        return None
+    method = TrailingMethod(params.text("trailing_method").lower())
+    if method is TrailingMethod.PERCENT:
+        return TrailingStopConfig(method=method, percent=params.number("trailing_stop_percent"))
+    if method is TrailingMethod.POINTS:
+        return TrailingStopConfig(method=method, points=params.number("trailing_stop_points"))
+    return TrailingStopConfig(
+        method=method,
+        atr_multiplier=params.number("trailing_stop_atr_multiplier"),
+    )

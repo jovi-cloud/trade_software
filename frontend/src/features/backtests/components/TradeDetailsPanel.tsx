@@ -36,6 +36,27 @@ export function TradeDetailsPanel({ trade, onClose }: TradeDetailsPanelProps) {
           valueClassName={pnlTextClass(trade.net_pnl)}
         />
         <Detail label="Bars held" value={trade.bars_held.toString()} />
+        {trade.exit_reason ? (
+          <Detail label="Exit reason" value={trade.exit_reason.replaceAll('_', ' ')} />
+        ) : null}
+        {trade.initial_stop_level !== null && trade.initial_stop_level !== undefined ? (
+          <Detail label="Initial stop" value={trade.initial_stop_level.toFixed(4)} />
+        ) : null}
+        {trade.trailing_stop_at_exit !== null && trade.trailing_stop_at_exit !== undefined ? (
+          <Detail label="Trailing stop at exit" value={trade.trailing_stop_at_exit.toFixed(4)} />
+        ) : null}
+        {trade.highest_price_reached !== null && trade.highest_price_reached !== undefined ? (
+          <Detail label="Highest price" value={trade.highest_price_reached.toFixed(4)} />
+        ) : null}
+        {trade.lowest_price_reached !== null && trade.lowest_price_reached !== undefined ? (
+          <Detail label="Lowest price" value={trade.lowest_price_reached.toFixed(4)} />
+        ) : null}
+        {trade.max_profit !== null && trade.max_profit !== undefined ? (
+          <Detail label="Max profit" value={formatCurrency(trade.max_profit)} />
+        ) : null}
+        {trade.max_drawdown_in_trade !== null && trade.max_drawdown_in_trade !== undefined ? (
+          <Detail label="Max drawdown" value={formatCurrency(trade.max_drawdown_in_trade)} />
+        ) : null}
         <Detail label="Commission" value={formatCurrency(trade.commission)} />
         <Detail label="Slippage" value={formatCurrency(trade.slippage_cost)} />
       </dl>

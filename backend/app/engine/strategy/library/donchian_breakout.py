@@ -24,6 +24,7 @@ from app.engine.strategy.library._shared import (
     fractional_param,
     max_bars_param,
     period_param,
+    trailing_stop_params,
 )
 from app.engine.strategy.metadata import (
     ChangelogEntry,
@@ -155,6 +156,7 @@ class DonchianBreakoutStrategy(StrategyBase):
         *atr_stop_params(stop_default=2.0, target_default=0.0),
         max_bars_param(),
         fractional_param(),
+        *trailing_stop_params(),
     )
 
     def declare_indicators(self) -> Mapping[str, Indicator]:

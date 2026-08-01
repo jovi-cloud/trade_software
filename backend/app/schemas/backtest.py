@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.enums import OrderStatus, OrderType, PositionSide
@@ -67,6 +69,75 @@ class BacktestExecuteRequest(BaseModel):
         ge=1,
         description="Replay only the first N bars. Useful for quick smoke tests.",
     )
+    skip_trades_on_price_anomaly_days: bool = Field(
+        default=False,
+        description=(
+            "Do not open new positions on session days flagged for price anomalies. "
+            "Bars still replay and exits are allowed."
+        ),
+    )
+    skip_trades_on_intraday_anomalies_10pct: bool = True
+    skip_trades_on_intraday_anomalies_20pct: bool = True
+    skip_trades_on_cross_day_anomalies_10pct: bool = True
+    skip_trades_on_cross_day_anomalies_20pct: bool = True
+    max_trades_per_day: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Maximum new positions that may be opened on each exchange-local "
+            "session day. Omitted means unlimited."
+        ),
+    )
+    entry_window_start: str | None = Field(
+        default=None,
+        description="Inclusive exchange-local HH:MM when new entries may begin.",
+    )
+    entry_window_end: str | None = Field(
+        default=None,
+        description="Inclusive exchange-local HH:MM when new entries must stop.",
+    )
+    override_stop_loss: bool = Field(
+        default=False,
+        description=(
+            "Replace the library strategy's declared stop-loss rule for this run. "
+            "Does not affect hand-written strategies."
+        ),
+    )
+    stop_loss_override_mode: Literal["percent", "atr", "disabled"] | None = Field(
+        default=None,
+        description="Percent of entry, ATR multiple, or disabled.",
+    )
+    stop_loss_value: float | None = Field(
+        default=None,
+        gt=0,
+        description="Stop distance: percent (e.g. 2.0) or ATR multiple (e.g. 1.5).",
+    )
+
+    @model_validator(mode="after")
+    def _check_stop_loss_override(self) -> BacktestExecuteRequest:
+        if not self.override_stop_loss:
+            return self
+        if self.stop_loss_override_mode is None:
+            raise ValueError("stop_loss_override_mode is required when override_stop_loss is true")
+        if self.stop_loss_override_mode == "disabled":
+            return self
+        if self.stop_loss_value is None:
+            raise ValueError("stop_loss_value is required for percent and atr stop overrides")
+        if self.stop_loss_override_mode == "percent" and self.stop_loss_value > 25:
+            raise ValueError("stop_loss_value percent must be at most 25")
+        if self.stop_loss_override_mode == "atr" and self.stop_loss_value > 10:
+            raise ValueError("stop_loss_value atr multiple must be at most 10")
+        return self
+
+    @model_validator(mode="after")
+    def _check_entry_window(self) -> BacktestExecuteRequest:
+        from app.engine.execution.entry_window import validate_entry_window
+
+        try:
+            validate_entry_window(self.entry_window_start, self.entry_window_end)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+        return self
 
     @model_validator(mode="after")
     def _check_strategy_selection(self) -> BacktestExecuteRequest:
@@ -108,6 +179,21 @@ class TradeRead(BaseModel):
     slippage_cost: float
     net_pnl: float
     bars_held: int
+    exit_reason: str | None = None
+    initial_stop_level: float | None = None
+    trailing_stop_at_exit: float | None = None
+    highest_price_reached: float | None = None
+    lowest_price_reached: float | None = None
+    max_favorable_excursion: float | None = None
+    max_adverse_excursion: float | None = None
+    max_profit: float | None = None
+    max_drawdown_in_trade: float | None = None
+
+
+class TrailingStopPointRead(BaseModel):
+    ts: int
+    level: float
+    trade_seq: int
 
 
 class EquityPointRead(BaseModel):
@@ -153,6 +239,12 @@ class PerformanceMetricsRead(BaseModel):
     slippage_cost: float
     final_cash: float
     return_pct: float
+    trailing_exit_count: int = Field(default=0, ge=0)
+    trailing_exit_average_profit: float = 0.0
+    trailing_exit_largest_profit: float = 0.0
+    trailing_exit_smallest_profit: float = 0.0
+    trailing_exit_win_rate_pct: float = 0.0
+    trailing_exit_average_bars_held: float = 0.0
 
 
 class BacktestJobResultRead(BaseModel):
@@ -210,5 +302,6 @@ class ExecutionResultRead(BaseModel):
     candles: list[CandleRead]
     entry_markers: list[TradeMarkerRead]
     exit_markers: list[TradeMarkerRead]
+    trailing_stop_points: list[TrailingStopPointRead] = Field(default_factory=list)
     explain_events: list[ExplainEventRead] = Field(default_factory=list)
     explain_level: ExplainLevel = ExplainLevel.TRADES_ONLY

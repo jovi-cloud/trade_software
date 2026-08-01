@@ -1,5 +1,7 @@
 import type { components } from '@/types/api'
 
+import type { PipelineReport } from './pipelineTypes'
+
 export type DatasetLifecycle = 'active' | 'archived' | 'deleted'
 
 export type Dataset = components['schemas']['DatasetRead'] & {
@@ -28,6 +30,8 @@ export type DatasetVersion = {
   quality_score?: number | null
   status: string
   error_message?: string | null
+  validation_report?: DatasetValidationReport | null
+  pipeline_report?: PipelineReport | null
   created_at: string
 }
 
