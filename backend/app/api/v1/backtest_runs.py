@@ -33,6 +33,7 @@ from app.schemas.explain import (
 from app.services.backtest_run_service import BacktestRunService
 from app.services.comparison_service import ComparisonService
 from app.services.explain_service import MAX_DECISION_WINDOW, ExplainService
+from app.services.run_export_service import RunExportService
 
 router = APIRouter(prefix="/backtests/runs", tags=["backtest-runs"])
 
@@ -125,11 +126,27 @@ def compare_backtest_runs_post(
     return comparison_report_read(report)
 
 
+@router.get("/{run_id}/download", summary="Download a complete backtest run export")
+def download_backtest_run(run_id: str, db: DbSession, paths: Paths) -> Response:
+    content, filename = RunExportService(db, paths).build_zip(run_id)
+    return Response(
+        content=content,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/{run_id}", response_model=BacktestRunRead, summary="Get a backtest run")
 def get_backtest_run(run_id: str, db: DbSession, paths: Paths) -> BacktestRunRead:
     service = BacktestRunService(db, paths)
-    run, strategy_name, dataset_name = service.get(run_id)
-    return read_from_row(run, strategy_name, dataset_name, analytics=service.analytics_for(run))
+    run, strategy_name, dataset_name, dataset_timezone = service.get(run_id)
+    return read_from_row(
+        run,
+        strategy_name,
+        dataset_name,
+        dataset_timezone=dataset_timezone,
+        analytics=service.analytics_for(run),
+    )
 
 
 @router.patch("/{run_id}", response_model=BacktestRunRead, summary="Update run research journal")
@@ -139,7 +156,13 @@ def update_backtest_run_research(
     service = BacktestRunService(db, paths)
     run = service.update_research(run_id, payload)
     row = service.get(run.id)
-    return read_from_row(row[0], row[1], row[2], analytics=service.analytics_for(row[0]))
+    return read_from_row(
+        row[0],
+        row[1],
+        row[2],
+        dataset_timezone=row[3],
+        analytics=service.analytics_for(row[0]),
+    )
 
 
 @router.delete(

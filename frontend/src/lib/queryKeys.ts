@@ -27,6 +27,8 @@ export const qk = {
     imports: (id: string) => [...qk.datasets.all, 'imports', id] as const,
     preview: (id: string, part: PreviewPart, rows: number) =>
       [...qk.datasets.all, 'preview', id, part, rows] as const,
+    bars: (id: string, offset: number, limit: number) =>
+      [...qk.datasets.all, 'bars', id, offset, limit] as const,
   },
   backtests: {
     all: ['backtests'] as const,

@@ -51,7 +51,11 @@ class SessionReport:
     candles_outside_session: int = 0
     unexpected_weekend_bars: int = 0
     unexpected_holiday_bars: int = 0
+    missing_opening_samples: tuple[str, ...] = field(default_factory=tuple)
+    missing_closing_samples: tuple[str, ...] = field(default_factory=tuple)
     outside_session_samples: tuple[str, ...] = field(default_factory=tuple)
+    unexpected_weekend_samples: tuple[str, ...] = field(default_factory=tuple)
+    unexpected_holiday_samples: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def total_issues(self) -> int:
@@ -65,6 +69,32 @@ class SessionReport:
 
 
 @dataclass(frozen=True)
+class PriceAnomalyReport:
+    spikes_over_10_pct: int = 0
+    spikes_over_20_pct: int = 0
+    cross_day_spikes_over_10_pct: int = 0
+    cross_day_spikes_over_20_pct: int = 0
+    days_with_spikes_over_10_pct: int = 0
+    days_with_spikes_over_20_pct: int = 0
+    bars_on_days_over_10_pct: int = 0
+    bars_on_days_over_20_pct: int = 0
+    intraday_bars_on_days_over_10_pct: int = 0
+    intraday_bars_on_days_over_20_pct: int = 0
+    cross_day_bars_on_days_over_10_pct: int = 0
+    cross_day_bars_on_days_over_20_pct: int = 0
+    spike_over_10_samples: tuple[str, ...] = field(default_factory=tuple)
+    spike_over_20_samples: tuple[str, ...] = field(default_factory=tuple)
+    cross_day_spike_over_10_samples: tuple[str, ...] = field(default_factory=tuple)
+    cross_day_spike_over_20_samples: tuple[str, ...] = field(default_factory=tuple)
+    intraday_days_over_10_samples: tuple[str, ...] = field(default_factory=tuple)
+    intraday_days_over_20_samples: tuple[str, ...] = field(default_factory=tuple)
+    cross_day_days_over_10_samples: tuple[str, ...] = field(default_factory=tuple)
+    cross_day_days_over_20_samples: tuple[str, ...] = field(default_factory=tuple)
+    days_over_10_samples: tuple[str, ...] = field(default_factory=tuple)
+    days_over_20_samples: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class GapReport:
     expected_bars: int
     actual_bars: int
@@ -75,6 +105,7 @@ class GapReport:
     gap_percentage: float
     missing_timestamps: tuple[str, ...] = field(default_factory=tuple)
     large_jump_samples: tuple[str, ...] = field(default_factory=tuple)
+    missing_details: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -114,3 +145,4 @@ class PipelineReport:
     quality_score: int
     rejected: bool
     rejection_reason: str | None = None
+    price_anomalies: PriceAnomalyReport = field(default_factory=PriceAnomalyReport)

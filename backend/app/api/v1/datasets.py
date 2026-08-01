@@ -12,14 +12,18 @@ from fastapi import APIRouter, Form, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 
 from app.api.deps import DbSession, Paths
+from app.data.data_pipeline.metadata import SessionCleaningOptions
 from app.domain.enums import Timeframe
 from app.repositories.data_import_repo import DataImportRepository
 from app.schemas.common import Page
 from app.schemas.dataset import (
     DataImportRead,
+    DatasetBarsPage,
+    DatasetCleanRequest,
     DatasetPreview,
     DatasetRead,
     DatasetReferencesRead,
+    DatasetRevalidateRequest,
     DatasetVersionRead,
     ImportPreviewResponse,
     PipelineReportRead,
@@ -109,9 +113,9 @@ async def import_dataset(
     symbol: str = Form(...),
     exchange: str = Form(...),
     timeframe: Timeframe | None = Form(default=None),
-    timezone: str = Form(default="UTC"),
+    timezone: str = Form(default="Asia/Kolkata"),
     session_open: str = Form(default="09:15"),
-    session_close: str = Form(default="15:30"),
+    session_close: str = Form(default="15:25"),
     column_mapping: str | None = Form(default=None),
 ) -> DatasetRead:
     content = await file.read()
@@ -188,7 +192,7 @@ async def import_dataset_version(
     file: UploadFile,
     timezone: str | None = Form(default=None),
     session_open: str = Form(default="09:15"),
-    session_close: str = Form(default="15:30"),
+    session_close: str = Form(default="15:25"),
     column_mapping: str | None = Form(default=None),
     timeframe: Timeframe | None = Form(default=None),
 ) -> DatasetRead:
@@ -268,13 +272,47 @@ def delete_dataset(dataset_id: str, db: DbSession, paths: Paths) -> Response:
 
 
 @router.post(
+    "/{dataset_id}/clean",
+    response_model=DatasetRead,
+    summary="Remove session violations and save a new dataset version",
+)
+def clean_dataset(
+    dataset_id: str,
+    body: DatasetCleanRequest,
+    db: DbSession,
+    paths: Paths,
+) -> DatasetRead:
+    service = ImportService(db, paths)
+    dataset = service.clean_dataset(
+        dataset_id,
+        session_cleaning=SessionCleaningOptions(
+            remove_outside_session=body.remove_outside_session,
+            remove_weekend_bars=body.remove_weekend_bars,
+            remove_holiday_bars=body.remove_holiday_bars,
+            remove_days_with_spikes_over_10pct=body.remove_days_with_spikes_over_10pct,
+            remove_days_with_spikes_over_20pct=body.remove_days_with_spikes_over_20pct,
+            remove_intraday_spike_days_over_10pct=body.remove_intraday_spike_days_over_10pct,
+            remove_intraday_spike_days_over_20pct=body.remove_intraday_spike_days_over_20pct,
+            remove_cross_day_spike_days_over_10pct=body.remove_cross_day_spike_days_over_10pct,
+            remove_cross_day_spike_days_over_20pct=body.remove_cross_day_spike_days_over_20pct,
+        ),
+    )
+    return DatasetService(db, paths).get_read(dataset.id)
+
+
+@router.post(
     "/{dataset_id}/validate",
     response_model=DatasetRead,
     summary="Re-run validation from the latest stored upload (creates a new version)",
 )
-def revalidate_dataset(dataset_id: str, db: DbSession, paths: Paths) -> DatasetRead:
+def revalidate_dataset(
+    dataset_id: str,
+    db: DbSession,
+    paths: Paths,
+    body: DatasetRevalidateRequest | None = None,
+) -> DatasetRead:
     service = ImportService(db, paths)
-    dataset = service.revalidate(dataset_id)
+    dataset = service.revalidate(dataset_id, timezone=body.timezone if body else None)
     return DatasetService(db, paths).get_read(dataset.id)
 
 
@@ -293,3 +331,20 @@ def preview_dataset(
 ) -> DatasetPreview:
     service = DatasetService(db, paths)
     return service.preview(dataset_id, part=part, rows=rows, version_number=version)
+
+
+@router.get(
+    "/{dataset_id}/bars",
+    response_model=DatasetBarsPage,
+    summary="Paginated OHLCV bars for browsing a dataset",
+)
+def list_dataset_bars(
+    dataset_id: str,
+    db: DbSession,
+    paths: Paths,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=100),
+    version: int | None = Query(default=None, ge=1),
+) -> DatasetBarsPage:
+    service = DatasetService(db, paths)
+    return service.list_bars(dataset_id, offset=offset, limit=limit, version_number=version)

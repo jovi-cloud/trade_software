@@ -68,3 +68,18 @@ def test_validate_rejects_negative_volume(valid_df: pl.DataFrame) -> None:
     df = valid_df.with_columns(pl.Series("volume", ["-100", "1200", "900"]))
     _, report = validate_and_normalise(df, timeframe=Timeframe.M1)
     assert report.negative_volumes == 1
+
+
+def test_validate_localises_exchange_timezone_to_utc(valid_df: pl.DataFrame) -> None:
+    timestamps = ["2024-01-01 09:15:00", "2024-01-01 09:16:00", "2024-01-01 09:17:00"]
+    df = valid_df.with_columns(pl.Series("timestamp", timestamps))
+    bars, _ = validate_and_normalise(df, timeframe=Timeframe.M1, timezone="Asia/Kolkata")
+    # 09:15 IST == 03:45 UTC (IST is UTC+5:30, no DST).
+    assert bars.select("ts").to_series().to_list()[0] == 1704080700000
+
+
+def test_validate_defaults_to_utc_when_no_timezone_given(valid_df: pl.DataFrame) -> None:
+    timestamps = ["2024-01-01 09:15:00", "2024-01-01 09:16:00", "2024-01-01 09:17:00"]
+    df = valid_df.with_columns(pl.Series("timestamp", timestamps))
+    bars, _ = validate_and_normalise(df, timeframe=Timeframe.M1)
+    assert bars.select("ts").to_series().to_list()[0] == 1704100500000

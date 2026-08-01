@@ -102,6 +102,7 @@ class BacktestRunRead(BaseModel):
     strategy_name: str
     dataset_id: str
     dataset_name: str
+    dataset_timezone: str = Field(default="Asia/Kolkata")
     dataset_version_id: str | None = None
     dataset_version_number: int | None = None
     dataset_import_id: str | None = None
@@ -229,6 +230,7 @@ def read_from_row(
     strategy_name: str,
     dataset_name: str,
     *,
+    dataset_timezone: str = "Asia/Kolkata",
     analytics: AnalyticsReportRead,
 ) -> BacktestRunRead:
     """Map a run row plus its analytics report into the detail response.
@@ -257,6 +259,7 @@ def read_from_row(
         strategy_name=strategy_name,
         dataset_id=run.dataset_id,
         dataset_name=dataset_name,
+        dataset_timezone=dataset_timezone,
         dataset_version_id=run.dataset_version_id,
         dataset_version_number=run.dataset_version_number,
         dataset_import_id=run.dataset_import_id,

@@ -38,15 +38,7 @@ export function comparisonToJson(report: ComparisonReport): string {
   return JSON.stringify(report, null, 2)
 }
 
-export function downloadTextFile(filename: string, content: string, mime: string) {
-  const blob = new Blob([content], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
+export { downloadTextFile } from '@/lib/download'
 
 export function filterMetricRows(
   rows: MetricComparisonRow[],

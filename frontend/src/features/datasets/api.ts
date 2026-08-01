@@ -3,6 +3,8 @@ import { api } from '@/lib/apiClient'
 import type {
   DataImport,
   Dataset,
+  DatasetBarsPage,
+  DatasetCleanInput,
   DatasetImportInput,
   DatasetListParams,
   DatasetPreview,
@@ -69,8 +71,23 @@ export function deleteDataset(id: string): Promise<void> {
   return api.delete<void>(`/datasets/${id}`)
 }
 
-export function revalidateDataset(id: string): Promise<Dataset> {
-  return api.post<Dataset>(`/datasets/${id}/validate`)
+export function cleanDataset(id: string, input: DatasetCleanInput): Promise<Dataset> {
+  return api.post<Dataset>(`/datasets/${id}/clean`, {
+    remove_outside_session: input.remove_outside_session,
+    remove_weekend_bars: input.remove_weekend_bars,
+    remove_holiday_bars: input.remove_holiday_bars,
+    remove_intraday_spike_days_over_10pct: input.remove_intraday_spike_days_over_10pct,
+    remove_intraday_spike_days_over_20pct: input.remove_intraday_spike_days_over_20pct,
+    remove_cross_day_spike_days_over_10pct: input.remove_cross_day_spike_days_over_10pct,
+    remove_cross_day_spike_days_over_20pct: input.remove_cross_day_spike_days_over_20pct,
+  })
+}
+
+export function revalidateDataset(
+  id: string,
+  options?: { timezone?: string },
+): Promise<Dataset> {
+  return api.post<Dataset>(`/datasets/${id}/validate`, options ?? {})
 }
 
 export function fetchDatasetPreview(
@@ -79,6 +96,14 @@ export function fetchDatasetPreview(
   rows: number,
 ): Promise<DatasetPreview> {
   return api.get<DatasetPreview>(`/datasets/${id}/preview`, { params: { part, rows } })
+}
+
+export function fetchDatasetBars(
+  id: string,
+  offset: number,
+  limit: number,
+): Promise<DatasetBarsPage> {
+  return api.get<DatasetBarsPage>(`/datasets/${id}/bars`, { params: { offset, limit } })
 }
 
 export interface ImportPreview {

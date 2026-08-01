@@ -15,9 +15,7 @@ NUMERIC_COLUMNS: tuple[str, ...] = ("open", "high", "low", "close", "volume")
 
 CANONICAL_COLUMNS: tuple[str, ...] = ("ts", "open", "high", "low", "close", "volume")
 
-# Expected spacing between consecutive bars for gap detection. A dataset with
-# actual holiday/session gaps will over-report "missing" bars against this
-# naive calendar - acceptable for V1; a session-calendar model is future work.
+# Expected spacing between consecutive bars for intraday gap detection.
 TIMEFRAME_STEP_MS: dict[Timeframe, int] = {
     Timeframe.M1: 60_000,
     Timeframe.M3: 180_000,

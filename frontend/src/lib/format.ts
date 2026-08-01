@@ -38,10 +38,16 @@ export function formatInteger(value: number | null | undefined): string {
   return Math.round(value).toLocaleString()
 }
 
-/** Bar timestamps are int64 UTC epoch milliseconds. */
-export function formatTimestamp(epochMs: number | null | undefined): string {
+/** Exchange timezone bar data is displayed in, regardless of viewer's local timezone. */
+export const DEFAULT_EXCHANGE_TIMEZONE = 'Asia/Kolkata'
+
+/** Bar timestamps are int64 UTC epoch milliseconds; shown in the dataset's exchange timezone. */
+export function formatTimestamp(
+  epochMs: number | null | undefined,
+  timeZone: string = DEFAULT_EXCHANGE_TIMEZONE,
+): string {
   if (epochMs === null || epochMs === undefined) return PLACEHOLDER
-  return new Date(epochMs).toLocaleString()
+  return new Date(epochMs).toLocaleString('en-IN', { timeZone })
 }
 
 export function formatDate(value: string | number | null | undefined): string {

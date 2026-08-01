@@ -7,6 +7,7 @@ Raw file -> validate -> clean -> normalise -> session check -> gap detection
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
@@ -15,8 +16,11 @@ from app.data.data_pipeline.cleaner import clean_raw
 from app.data.data_pipeline.gap_detector import detect_gaps
 from app.data.data_pipeline.importer import read_raw, read_raw_bytes
 from app.data.data_pipeline.metadata import PipelineConfig
+from app.data.data_pipeline.price_anomaly_cleaner import clean_price_anomaly_days
+from app.data.data_pipeline.price_anomaly_detector import detect_price_anomalies
 from app.data.data_pipeline.quality import build_pipeline_report
-from app.data.data_pipeline.report import PipelineReport
+from app.data.data_pipeline.report import CleaningReport, PipelineReport
+from app.data.data_pipeline.session_cleaner import clean_session_bars
 from app.data.data_pipeline.session_validator import validate_session
 from app.data.data_pipeline.statistics import compute_statistics, detect_timeframe
 from app.data.data_pipeline.validators import validate_and_normalise
@@ -58,7 +62,47 @@ def _run_pipeline(raw: pl.DataFrame, config: PipelineConfig) -> PipelineResult:
         cleaned,
         timeframe=config.timeframe,
         remove_duplicate_timestamps=True,
+        timezone=config.session.timezone,
     )
+
+    price_anomaly_report = detect_price_anomalies(bars, session=config.session)
+    if config.session_cleaning.price_anomaly_cleaning_enabled:
+        bars, anomaly_cleaning = clean_price_anomaly_days(
+            bars,
+            price_anomaly_report,
+            config.session,
+            config.session_cleaning,
+        )
+        cleaning_report = CleaningReport(
+            actions=cleaning_report.actions + anomaly_cleaning.actions
+        )
+        price_anomaly_report = detect_price_anomalies(bars, session=config.session)
+        validation_updates: dict[str, object] = {"valid_rows": bars.height}
+        if bars.height > 0:
+            min_ts = int(bars.select(pl.col("ts").min()).item())
+            max_ts = int(bars.select(pl.col("ts").max()).item())
+            validation_updates["start_date"] = datetime.fromtimestamp(min_ts / 1000, tz=UTC)
+            validation_updates["end_date"] = datetime.fromtimestamp(max_ts / 1000, tz=UTC)
+        validation = type(validation)(**{**validation.__dict__, **validation_updates})
+
+    if config.session_cleaning.enabled and (
+        config.session_cleaning.remove_outside_session
+        or config.session_cleaning.remove_weekend_bars
+        or config.session_cleaning.remove_holiday_bars
+    ):
+        bars, session_cleaning = clean_session_bars(
+            bars, config.session, config.session_cleaning
+        )
+        cleaning_report = CleaningReport(
+            actions=cleaning_report.actions + session_cleaning.actions
+        )
+        validation_updates: dict[str, object] = {"valid_rows": bars.height}
+        if bars.height > 0:
+            min_ts = int(bars.select(pl.col("ts").min()).item())
+            max_ts = int(bars.select(pl.col("ts").max()).item())
+            validation_updates["start_date"] = datetime.fromtimestamp(min_ts / 1000, tz=UTC)
+            validation_updates["end_date"] = datetime.fromtimestamp(max_ts / 1000, tz=UTC)
+        validation = type(validation)(**{**validation.__dict__, **validation_updates})
 
     timeframe_report = detect_timeframe(bars)
     resolved_timeframe = config.timeframe or timeframe_report.detected
@@ -68,6 +112,7 @@ def _run_pipeline(raw: pl.DataFrame, config: PipelineConfig) -> PipelineResult:
         bars,
         timeframe=resolved_timeframe,
         dominant_interval_ms=timeframe_report.dominant_interval_ms,
+        session=config.session,
     )
 
     # Update validation with gap counts from dedicated detector.
@@ -97,6 +142,7 @@ def _run_pipeline(raw: pl.DataFrame, config: PipelineConfig) -> PipelineResult:
         gaps=gap_report,
         timeframe=timeframe_report,
         statistics=statistics,
+        price_anomalies=price_anomaly_report,
     )
 
     # Recompute statistics with final quality score.

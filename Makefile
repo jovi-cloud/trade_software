@@ -6,6 +6,12 @@
 BACKEND  := backend
 FRONTEND := frontend
 
+# Dev ports — edit scripts/ports.env to change (defaults: backend 8001, frontend 5174).
+-include scripts/ports.env
+export
+BACKEND_PORT ?= 8001
+FRONTEND_PORT ?= 5174
+
 help: ## Show available commands
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -19,15 +25,15 @@ install: ## Install backend and frontend dependencies
 dev: ## Run backend and frontend together (Ctrl-C stops both)
 	@./scripts/dev.sh
 
-dev-backend: ## Run the API with autoreload on http://127.0.0.1:8000
-	cd $(BACKEND) && uv run uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
+dev-backend: ## Run the API with autoreload (port from scripts/ports.env)
+	cd $(BACKEND) && uv run uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port $(BACKEND_PORT)
 
-dev-frontend: ## Run the Vite dev server on http://localhost:5173
+dev-frontend: ## Run the Vite dev server (port from scripts/ports.env)
 	cd $(FRONTEND) && npm run dev
 
 # Packaged-app parity: built frontend served by FastAPI (not the Vite dev server).
-prod: build ## Like the installed app in a browser — http://127.0.0.1:8000
-	cd $(BACKEND) && uv run uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000
+prod: build ## Serve UI + API on BACKEND_PORT (default 8001)
+	cd $(BACKEND) && uv run uvicorn app.main:create_app --factory --host 127.0.0.1 --port $(BACKEND_PORT)
 
 desktop: build ## Desktop window using built frontend (closest test before installer)
 	cd $(BACKEND) && uv sync --group packaging && uv run python -m app.desktop
@@ -82,8 +88,8 @@ db-reset: ## Delete the database and re-migrate (DESTROYS ALL DATA)
 	cd $(BACKEND) && uv run alembic upgrade head
 
 # ---------------------------------------------------------------- types ----
-types: ## Regenerate frontend API types (backend must be running)
-	cd $(FRONTEND) && npm run types
+types: ## Regenerate frontend API types (backend must be running on BACKEND_PORT)
+	cd $(FRONTEND) && BACKEND_PORT=$(BACKEND_PORT) npm run types
 
 # ---------------------------------------------------------------- build ----
 build: ## Production build of the frontend

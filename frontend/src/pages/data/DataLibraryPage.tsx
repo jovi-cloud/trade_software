@@ -206,13 +206,24 @@ export default function DataLibraryPage() {
 
       <DeleteDatasetDialog
         dataset={pendingDelete}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDelete(null)
+            deleteDataset.reset()
+          }
+        }}
         onConfirm={() => {
           if (!pendingDelete) return
-          deleteDataset.mutate(pendingDelete.id)
-          setPendingDelete(null)
+          deleteDataset.mutate(pendingDelete.id, {
+            onSuccess: () => setPendingDelete(null),
+          })
         }}
         isDeleting={deleteDataset.isPending}
+        errorMessage={
+          deleteDataset.isError
+            ? getErrorMessage(deleteDataset.error, 'Unable to delete this dataset.')
+            : null
+        }
       />
     </div>
   )

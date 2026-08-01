@@ -1,18 +1,60 @@
 import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate, formatInteger, formatPercent } from '@/lib/format'
 
+import { sessionIssueRows, priceAnomalyRows } from '../qualityScore'
+import type { PipelineReport } from '../pipelineTypes'
 import type { Dataset } from '../types'
+import { SessionIssueDetailRow } from './SessionIssueDetailRow'
+
+const GAP_DETAIL_NOTE =
+  'These are absent bars in the feed, not extra rows. Cleaning cannot remove data gaps — re-validate after re-import or accept partial trading days.'
+
+function sessionDetailProps(row: ReturnType<typeof sessionIssueRows>[number]) {
+  const isGap = row.key === 'missing_opening' || row.key === 'missing_closing'
+  return {
+    samples: row.samples,
+    expandable: row.count > 0,
+    detailNote: isGap ? GAP_DETAIL_NOTE : undefined,
+    sampleLabel: isGap ? 'expected bar' : 'sample row',
+  }
+}
 
 interface CheckRowProps {
   label: string
   count: number
   zeroIsGood: boolean
   samples?: readonly string[]
+  expandable?: boolean
+  detailNote?: string
+  sampleLabel?: string
 }
 
-function CheckRow({ label, count, zeroIsGood, samples }: CheckRowProps) {
+function CheckRow({
+  label,
+  count,
+  zeroIsGood,
+  samples,
+  expandable = false,
+  detailNote,
+  sampleLabel,
+}: CheckRowProps) {
+  if (expandable && count > 0) {
+    return (
+      <div className="border-b border-border py-2 last:border-b-0">
+        <SessionIssueDetailRow
+          label={label}
+          count={count}
+          samples={samples}
+          detailNote={detailNote}
+          sampleLabel={sampleLabel}
+        />
+      </div>
+    )
+  }
+
   const isGood = zeroIsGood ? count === 0 : count > 0
   const Icon = isGood ? CheckCircle2 : AlertTriangle
 
@@ -45,11 +87,16 @@ function CheckRow({ label, count, zeroIsGood, samples }: CheckRowProps) {
 
 interface ValidationReportCardProps {
   dataset: Dataset
+  onShowQualityBreakdown?: () => void
 }
 
-export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
+export function ValidationReportCard({
+  dataset,
+  onShowQualityBreakdown,
+}: ValidationReportCardProps) {
   const report = dataset.validation_report
-  const pipeline = (dataset as Dataset & { pipeline_report?: PipelineReport }).pipeline_report
+  const pipeline = (dataset as Dataset & { pipeline_report?: PipelineReport | null })
+    .pipeline_report
   const qualityScore =
     (dataset as Dataset & { quality_score?: number | null }).quality_score ??
     pipeline?.quality_score
@@ -81,9 +128,12 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
   }
 
   const gaps = pipeline?.gaps
+  const session = pipeline?.session
+  const priceAnomalies = pipeline?.price_anomalies
+  const anomalyRows = priceAnomalyRows(priceAnomalies)
 
   return (
-    <Card>
+    <Card className="mb-4">
       <CardHeader>
         <CardTitle>Validation Report</CardTitle>
       </CardHeader>
@@ -91,17 +141,24 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
         <div className="grid gap-4 sm:grid-cols-4">
           <div>
             <p className="text-xs text-muted-foreground">Quality score</p>
-            <p
-              className={`tabular mt-1 text-lg font-semibold ${
-                qualityScore !== null && qualityScore !== undefined && qualityScore >= 80
-                  ? 'text-profit'
-                  : qualityScore !== null && qualityScore !== undefined && qualityScore >= 70
-                    ? 'text-yellow-500'
-                    : 'text-loss'
-              }`}
-            >
-              {qualityScore ?? '--'}
-            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <p
+                className={`tabular text-lg font-semibold ${
+                  qualityScore !== null && qualityScore !== undefined && qualityScore >= 80
+                    ? 'text-profit'
+                    : qualityScore !== null && qualityScore !== undefined && qualityScore >= 70
+                      ? 'text-yellow-500'
+                      : 'text-loss'
+                }`}
+              >
+                {qualityScore ?? '--'}
+              </p>
+              {onShowQualityBreakdown && (
+                <Button type="button" variant="link" size="sm" onClick={onShowQualityBreakdown}>
+                  How calculated?
+                </Button>
+              )}
+            </div>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Total rows read</p>
@@ -126,15 +183,14 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
         {gaps && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              <strong className="font-medium text-foreground">Missing bars</strong> counts timestamps
-              where the gap between consecutive bars is longer than one bar interval (e.g. 5
-              minutes). Overnight closes, weekends, and holidays are included in this total for
-              intraday data — so a jump like Friday 15:25 → Monday 09:15 is expected, not a CSV
-              error. Worry about gaps that fall inside a trading session.
+              <strong className="font-medium text-foreground">Missing bars</strong> counts only
+              gaps inside a trading session (default 09:15–15:25 last bar open in the dataset&apos;s
+              exchange timezone). Overnight closes, weekends, holidays, and full non-trading days
+              are ignored.
             </p>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <p className="text-xs text-muted-foreground">Missing bars</p>
+                <p className="text-xs text-muted-foreground">Intraday missing bars</p>
                 <p className="tabular mt-1 text-sm">{formatInteger(gaps.missing_bars)}</p>
               </div>
               <div>
@@ -150,6 +206,23 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
                 </p>
               </div>
             </div>
+            {gaps.missing_details && gaps.missing_details.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  Missing bar details
+                </p>
+                <ul className="max-h-48 space-y-1 overflow-y-auto text-xs text-muted-foreground">
+                  {gaps.missing_details.slice(0, 20).map((detail) => (
+                    <li key={detail} className="tabular">
+                      {detail}
+                    </li>
+                  ))}
+                  {gaps.missing_details.length > 20 && (
+                    <li>…and {gaps.missing_details.length - 20} more (see import logs)</li>
+                  )}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -157,11 +230,19 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
           <CheckRow label="Valid rows" count={report.valid_rows} zeroIsGood={false} />
           <CheckRow label="Invalid dates" count={report.invalid_dates} zeroIsGood />
           <CheckRow label="Invalid prices" count={report.invalid_prices} zeroIsGood />
+          <CheckRow label="OHLC violations" count={report.ohlc_violations} zeroIsGood />
           <CheckRow
-            label="OHLC violations"
-            count={(report as DatasetValidationReportExtended).ohlc_violations ?? 0}
+            label="Negative volumes"
+            count={report.negative_volumes}
             zeroIsGood
           />
+          <CheckRow
+            label="Non-positive prices"
+            count={report.non_positive_prices}
+            zeroIsGood
+          />
+          <CheckRow label="NaN values" count={report.nan_values} zeroIsGood />
+          <CheckRow label="Infinity values" count={report.infinity_values} zeroIsGood />
           <CheckRow
             label="Duplicate timestamps"
             count={report.duplicate_timestamps}
@@ -169,12 +250,62 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
             samples={report.duplicate_samples ?? undefined}
           />
           <CheckRow
-            label="Missing bars"
-            count={report.missing_timestamps}
+            label="Out-of-order timestamps"
+            count={report.out_of_order_timestamps}
             zeroIsGood
-            samples={report.gap_samples ?? undefined}
+          />
+          <CheckRow
+            label="Intraday missing bars"
+            count={gaps?.missing_bars ?? report.missing_timestamps}
+            zeroIsGood
+            samples={gaps?.missing_timestamps ?? report.gap_samples ?? undefined}
           />
         </div>
+
+        {anomalyRows.some((row) => row.count > 0) && (
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">
+              Price anomaly checks (intraday bars and consecutive trading days)
+            </p>
+            {anomalyRows.map((row) => (
+              <CheckRow
+                key={row.key}
+                label={row.label}
+                count={row.count}
+                zeroIsGood
+                samples={row.samples}
+                expandable={row.count > 0}
+                detailNote={
+                  row.dayCount > 0
+                    ? `${formatInteger(row.dayCount)} trading day(s) affected: ${row.daySamples?.join(', ')}`
+                    : undefined
+                }
+                sampleLabel="spike"
+              />
+            ))}
+          </div>
+        )}
+
+        {session && sessionIssueRows(session).some((row) => row.count > 0) && (
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Session checks</p>
+            {sessionIssueRows(session).map((row) => {
+              const detail = sessionDetailProps(row)
+              return (
+                <CheckRow
+                  key={row.key}
+                  label={row.label}
+                  count={row.count}
+                  zeroIsGood
+                  samples={detail.samples}
+                  expandable={detail.expandable}
+                  detailNote={detail.detailNote}
+                  sampleLabel={detail.sampleLabel}
+                />
+              )
+            })}
+          </div>
+        )}
 
         {pipeline?.cleaning?.actions && pipeline.cleaning.actions.length > 0 && (
           <div>
@@ -192,17 +323,4 @@ export function ValidationReportCard({ dataset }: ValidationReportCardProps) {
       </CardContent>
     </Card>
   )
-}
-
-interface DatasetValidationReportExtended {
-  ohlc_violations?: number
-}
-
-interface PipelineReport {
-  quality_score: number
-  rejected?: boolean
-  rejection_reason?: string | null
-  gaps?: { missing_bars: number; gap_percentage: number }
-  timeframe?: { detected?: string | null }
-  cleaning?: { actions: { action: string; count: number; detail?: string }[] }
 }

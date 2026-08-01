@@ -6,6 +6,7 @@ import json
 import shutil
 from pathlib import Path
 
+import polars as pl
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError
@@ -28,6 +29,7 @@ from app.repositories.dataset_version_repo import DatasetVersionRepository
 from app.schemas.dataset import (
     BarRow,
     DatasetBacktestReference,
+    DatasetBarsPage,
     DatasetPreview,
     DatasetRead,
     DatasetReferencesRead,
@@ -85,6 +87,8 @@ def dataset_to_read(dataset: Dataset, *, version_count: int = 0) -> DatasetRead:
         original_filename=dataset.original_filename,
         file_hash=dataset.file_hash,
         timezone=dataset.timezone or "UTC",
+        session_open=getattr(dataset, "session_open", None) or "09:15",
+        session_close=getattr(dataset, "session_close", None) or "15:25",
         detected_timeframe=detected_tf,
         quality_score=dataset.quality_score,
         row_count=dataset.row_count,
@@ -280,3 +284,27 @@ class DatasetService:
             else store.read_tail(parquet_path, rows)
         )
         return DatasetPreview(rows=[BarRow(**row) for row in frame.to_dicts()])
+
+    def list_bars(
+        self,
+        dataset_id: str,
+        *,
+        offset: int,
+        limit: int,
+        version_number: int | None = None,
+    ) -> DatasetBarsPage:
+        version, parquet_path = self.resolve_version_parquet(dataset_id, version_number)
+        _ = version
+        limit = max(1, min(limit, MAX_PAGE_SIZE))
+        offset = max(0, offset)
+        total = store.row_count(parquet_path)
+        if offset >= total:
+            frame = pl.DataFrame()
+        else:
+            frame = store.read_slice(parquet_path, offset, limit)
+        return DatasetBarsPage(
+            rows=[BarRow(**row) for row in frame.to_dicts()],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )

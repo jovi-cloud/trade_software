@@ -28,7 +28,7 @@ export function ImportDatasetForm({ onSubmit, isSubmitting, onCancel }: ImportDa
   const [timeframe, setTimeframe] = useState<Timeframe | undefined>(undefined)
   const [timezone, setTimezone] = useState('Asia/Kolkata')
   const [sessionOpen, setSessionOpen] = useState('09:15')
-  const [sessionClose, setSessionClose] = useState('15:30')
+  const [sessionClose, setSessionClose] = useState('15:25')
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [fieldError, setFieldError] = useState<string | null>(null)

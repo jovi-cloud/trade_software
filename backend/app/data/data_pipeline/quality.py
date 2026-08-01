@@ -8,6 +8,7 @@ from app.data.data_pipeline.report import (
     DatasetStatistics,
     GapReport,
     PipelineReport,
+    PriceAnomalyReport,
     SessionReport,
     TimeframeReport,
     ValidationReport,
@@ -19,6 +20,7 @@ def compute_quality_score(
     gaps: GapReport,
     session: SessionReport,
     timeframe: TimeframeReport,
+    price_anomalies: PriceAnomalyReport | None = None,
 ) -> int:
     """Compute a deterministic 0-100 quality score.
 
@@ -42,6 +44,12 @@ def compute_quality_score(
     score -= min(5.0, (validation.infinity_values / total) * 100)
     score -= min(15.0, gaps.gap_percentage * 0.3)
     score -= min(10.0, session.total_issues * 0.2)
+
+    anomalies = price_anomalies or PriceAnomalyReport()
+    score -= min(5.0, anomalies.spikes_over_10_pct * 0.5)
+    score -= min(5.0, anomalies.spikes_over_20_pct * 1.0)
+    score -= min(5.0, anomalies.cross_day_spikes_over_10_pct * 0.5)
+    score -= min(5.0, anomalies.cross_day_spikes_over_20_pct * 1.0)
 
     if validation.out_of_order_timestamps > 0:
         score -= 1.0
@@ -75,8 +83,10 @@ def build_pipeline_report(
     gaps: GapReport,
     timeframe: TimeframeReport,
     statistics: DatasetStatistics,
+    price_anomalies: PriceAnomalyReport | None = None,
 ) -> PipelineReport:
-    quality_score = compute_quality_score(validation, gaps, session, timeframe)
+    anomalies = price_anomalies or PriceAnomalyReport()
+    quality_score = compute_quality_score(validation, gaps, session, timeframe, anomalies)
     rejected, reason = should_reject(quality_score, validation, timeframe)
     return PipelineReport(
         validation=validation,
@@ -88,4 +98,5 @@ def build_pipeline_report(
         quality_score=quality_score,
         rejected=rejected,
         rejection_reason=reason,
+        price_anomalies=anomalies,
     )

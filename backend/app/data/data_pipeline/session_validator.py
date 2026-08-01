@@ -10,11 +10,16 @@ import polars as pl
 
 from app.data.data_pipeline.metadata import MAX_SAMPLE_COUNT, SessionConfig
 from app.data.data_pipeline.report import SessionReport
+from app.data.data_pipeline.session_bounds import (
+    matches_bar_time,
+    resolve_session_bar_bounds,
+)
 
 
-def _parse_hhmm(value: str) -> tuple[int, int]:
-    hour, minute = value.split(":")
-    return int(hour), int(minute)
+def _expected_bar_iso(day_key: str, hhmm: str, tz: ZoneInfo) -> str:
+    hour, minute = map(int, hhmm.split(":"))
+    day = datetime.strptime(day_key, "%Y-%m-%d")
+    return day.replace(hour=hour, minute=minute, tzinfo=tz).isoformat()
 
 
 def validate_session(bars: pl.DataFrame, config: SessionConfig) -> SessionReport:
@@ -23,10 +28,7 @@ def validate_session(bars: pl.DataFrame, config: SessionConfig) -> SessionReport
         return SessionReport()
 
     tz = ZoneInfo(config.timezone)
-    open_h, open_m = _parse_hhmm(config.open_time)
-    close_h, close_m = _parse_hhmm(config.close_time)
-    open_minutes = open_h * 60 + open_m
-    close_minutes = close_h * 60 + close_m
+    bounds = resolve_session_bar_bounds(config.open_time, config.close_time)
     trading_days = set(config.trading_days)
     holidays = config.holidays
 
@@ -35,7 +37,11 @@ def validate_session(bars: pl.DataFrame, config: SessionConfig) -> SessionReport
     outside_session = 0
     weekend_bars = 0
     holiday_bars = 0
+    missing_open_samples: list[str] = []
+    missing_close_samples: list[str] = []
     outside_samples: list[str] = []
+    weekend_samples: list[str] = []
+    holiday_samples: list[str] = []
 
     ts_series = bars.select("ts").to_series().to_list()
     by_day: dict[str, list[tuple[int, int]]] = {}
@@ -48,9 +54,13 @@ def validate_session(bars: pl.DataFrame, config: SessionConfig) -> SessionReport
 
         if dt.weekday() not in trading_days:
             weekend_bars += 1
+            if len(weekend_samples) < MAX_SAMPLE_COUNT:
+                weekend_samples.append(dt.isoformat())
         if day_key in holidays:
             holiday_bars += 1
-        if minutes < open_minutes or minutes > close_minutes:
+            if len(holiday_samples) < MAX_SAMPLE_COUNT:
+                holiday_samples.append(dt.isoformat())
+        if minutes < bounds.open_minutes or minutes > bounds.last_bar_minutes:
             outside_session += 1
             if len(outside_samples) < MAX_SAMPLE_COUNT:
                 outside_samples.append(dt.isoformat())
@@ -62,10 +72,14 @@ def validate_session(bars: pl.DataFrame, config: SessionConfig) -> SessionReport
         if dt.weekday() not in trading_days:
             continue
         minutes_list = [m for _, m in entries]
-        if not any(abs(m - open_minutes) <= 1 for m in minutes_list):
+        if not any(matches_bar_time(m, bounds.open_minutes) for m in minutes_list):
             missing_open += 1
-        if not any(abs(m - close_minutes) <= 1 for m in minutes_list):
+            if len(missing_open_samples) < MAX_SAMPLE_COUNT:
+                missing_open_samples.append(_expected_bar_iso(day_key, config.open_time, tz))
+        if not any(matches_bar_time(m, bounds.last_bar_minutes) for m in minutes_list):
             missing_close += 1
+            if len(missing_close_samples) < MAX_SAMPLE_COUNT:
+                missing_close_samples.append(_expected_bar_iso(day_key, config.close_time, tz))
 
     return SessionReport(
         missing_opening_candles=missing_open,
@@ -73,5 +87,9 @@ def validate_session(bars: pl.DataFrame, config: SessionConfig) -> SessionReport
         candles_outside_session=outside_session,
         unexpected_weekend_bars=weekend_bars,
         unexpected_holiday_bars=holiday_bars,
+        missing_opening_samples=tuple(missing_open_samples),
+        missing_closing_samples=tuple(missing_close_samples),
         outside_session_samples=tuple(outside_samples),
+        unexpected_weekend_samples=tuple(weekend_samples),
+        unexpected_holiday_samples=tuple(holiday_samples),
     )

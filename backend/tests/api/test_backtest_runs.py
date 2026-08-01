@@ -141,6 +141,27 @@ def test_delete_backtest_run(client: TestClient) -> None:
     assert response.status_code == 404
 
 
+def test_download_backtest_run_export(client: TestClient) -> None:
+    import io
+    import zipfile
+
+    run_id, _ = _execute_backtest(client)
+
+    response = client.get(f"/api/v1/backtests/runs/{run_id}/download")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert "attachment" in response.headers["content-disposition"]
+
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        names = set(archive.namelist())
+        assert "README.txt" in names
+        assert "run.json" in names
+        assert "candles.csv" in names
+        assert "equity_curve.csv" in names
+        assert "trades.csv" in names
+        assert "strategy_code.py" in names
+
+
 def test_list_backtest_runs_filter_by_status(client: TestClient) -> None:
     _execute_backtest(client)
 

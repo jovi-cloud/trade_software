@@ -131,6 +131,23 @@ def test_preview_returns_head_and_tail_rows(client: TestClient) -> None:
     assert tail.json()["rows"][-1]["open"] == 101.5
 
 
+def test_list_bars_returns_paginated_rows(client: TestClient) -> None:
+    created = _import(client).json()
+
+    response = client.get(
+        f"/api/v1/datasets/{created['id']}/bars",
+        params={"offset": 0, "limit": 2},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 3
+    assert body["offset"] == 0
+    assert body["limit"] == 2
+    assert len(body["rows"]) == 2
+    assert body["rows"][0]["open"] == 100.0
+
+
 def test_validate_reruns_validation_from_stored_csv(client: TestClient) -> None:
     created = _import(client).json()
 
@@ -140,6 +157,65 @@ def test_validate_reruns_validation_from_stored_csv(client: TestClient) -> None:
     body = response.json()
     assert body["import_status"] == "completed"
     assert body["row_count"] == 3
+
+
+def test_clean_dataset_removes_outside_session_bars(client: TestClient) -> None:
+    csv = (
+        b"timestamp,open,high,low,close,volume\n"
+        b"2024-01-01 09:15:00,100,101,99,100.5,1000\n"
+        b"2024-01-01 08:00:00,100,101,99,100.5,1000\n"
+        b"2024-01-01 09:17:00,101.5,103,101,102.5,900\n"
+    )
+    created = _import(client, content=csv).json()
+
+    response = client.post(
+        f"/api/v1/datasets/{created['id']}/clean",
+        json={
+            "remove_outside_session": True,
+            "remove_weekend_bars": False,
+            "remove_holiday_bars": False,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["row_count"] == 2
+    assert body["current_version_number"] == 2
+    session = body["pipeline_report"]["session"]
+    assert session["candles_outside_session"] == 0
+
+
+def test_clean_dataset_removes_price_anomaly_days(client: TestClient) -> None:
+    csv = (
+        b"timestamp,open,high,low,close,volume\n"
+        b"2024-01-01 09:15:00,100,101,99,100,1000\n"
+        b"2024-01-01 09:17:00,100,101,99,100,1000\n"
+        b"2024-01-01 09:19:00,120,125,119,125,1000\n"
+        b"2024-01-02 09:15:00,100,101,99,100,1000\n"
+        b"2024-01-02 09:17:00,100,101,99,100,1000\n"
+    )
+    created = _import(client, content=csv).json()
+    anomalies = created["pipeline_report"]["price_anomalies"]
+    assert anomalies["spikes_over_10_pct"] == 1
+    assert anomalies["intraday_days_over_10_samples"] == ["2024-01-01"]
+
+    response = client.post(
+        f"/api/v1/datasets/{created['id']}/clean",
+        json={
+            "remove_outside_session": False,
+            "remove_weekend_bars": False,
+            "remove_holiday_bars": False,
+            "remove_intraday_spike_days_over_10pct": True,
+            "remove_intraday_spike_days_over_20pct": False,
+            "remove_cross_day_spike_days_over_10pct": False,
+            "remove_cross_day_spike_days_over_20pct": False,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["row_count"] == 2
+    assert body["pipeline_report"]["price_anomalies"]["spikes_over_10_pct"] == 0
 
 
 def test_validate_missing_dataset_returns_404(client: TestClient) -> None:

@@ -15,12 +15,14 @@ import { BacktestChartTabs } from './BacktestChartTabs'
 
 interface ExecutionResultCardProps {
   result: ExecutionResult
+  displayTimezone?: string
   selectedBarIndex?: number | null
   onBarSelect?: (barIndex: number) => void
 }
 
 export function ExecutionResultCard({
   result,
+  displayTimezone,
   selectedBarIndex,
   onBarSelect,
 }: ExecutionResultCardProps) {
@@ -93,10 +95,10 @@ export function ExecutionResultCard({
                     <td className="px-3 py-2">{formatTradeSide(trade.side)}</td>
                     <td className="px-3 py-2">{trade.quantity}</td>
                     <td className="px-3 py-2">
-                      {formatTimestamp(trade.entry_ts)} @ {trade.entry_price.toFixed(4)}
+                      {formatTimestamp(trade.entry_ts, displayTimezone)} @ {trade.entry_price.toFixed(4)}
                     </td>
                     <td className="px-3 py-2">
-                      {formatTimestamp(trade.exit_ts)} @ {trade.exit_price.toFixed(4)}
+                      {formatTimestamp(trade.exit_ts, displayTimezone)} @ {trade.exit_price.toFixed(4)}
                     </td>
                     <td
                       className={`px-3 py-2 font-medium ${

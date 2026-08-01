@@ -13,7 +13,7 @@
     "lint:fix": "oxlint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "types": "openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.ts"
+    "types": "openapi-typescript http://127.0.0.1:${BACKEND_PORT:-8001}/openapi.json -o src/types/api.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

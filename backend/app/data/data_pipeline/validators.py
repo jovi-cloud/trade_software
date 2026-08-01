@@ -30,10 +30,28 @@ def _empty_bars() -> pl.DataFrame:
     )
 
 
-def _parse_timestamps(column: pl.Series) -> pl.Series:
+def _parse_timestamps(column: pl.Series, *, timezone: str) -> pl.Series:
+    """Parse raw timestamp strings and convert to true UTC.
+
+    Source timestamps are exchange-local wall-clock time (e.g. NSE data is
+    printed in Asia/Kolkata, not UTC). They must be localised to the
+    exchange timezone before being converted to UTC, otherwise the wall-clock
+    digits get stored as if they were already UTC and every downstream
+    UTC-aware display shifts the bar by the exchange's offset.
+    """
     try:
-        return column.str.strip_chars().str.to_datetime(strict=False, time_unit="ms")
+        naive = column.str.strip_chars().str.to_datetime(strict=False, time_unit="ms")
     except pl.exceptions.ComputeError:
+        return pl.Series([None] * len(column), dtype=pl.Datetime(time_unit="ms"))
+
+    if timezone == "UTC":
+        return naive
+
+    try:
+        return naive.dt.replace_time_zone(
+            timezone, ambiguous="earliest", non_existent="null"
+        ).dt.convert_time_zone("UTC").dt.replace_time_zone(None)
+    except pl.exceptions.InvalidOperationError:
         return pl.Series([None] * len(column), dtype=pl.Datetime(time_unit="ms"))
 
 
@@ -42,6 +60,7 @@ def validate_and_normalise(
     *,
     timeframe: Timeframe | None = None,
     remove_duplicate_timestamps: bool = True,
+    timezone: str = "UTC",
 ) -> tuple[pl.DataFrame, ValidationReport]:
     """Parse, validate, and normalise raw string bars to canonical typed form."""
     total_rows = raw.height
@@ -56,7 +75,7 @@ def validate_and_normalise(
         )
 
     parsed = raw.with_columns(
-        _parse_timestamps(raw["timestamp"]).alias("_ts"),
+        _parse_timestamps(raw["timestamp"], timezone=timezone).alias("_ts"),
         *[
             pl.col(c).str.strip_chars().cast(pl.Float64, strict=False).alias(f"_{c}")
             for c in NUMERIC_COLUMNS

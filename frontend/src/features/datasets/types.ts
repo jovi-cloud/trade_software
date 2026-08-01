@@ -8,6 +8,8 @@ export type Dataset = components['schemas']['DatasetRead'] & {
   current_version_id?: string | null
   current_version_number?: number | null
   version_count?: number
+  session_open?: string
+  session_close?: string
 }
 export type DatasetVersion = {
   id: string
@@ -48,6 +50,12 @@ export type DataImport = {
 export type DatasetValidationReport = components['schemas']['DatasetValidationReport']
 export type DatasetPreview = components['schemas']['DatasetPreview']
 export type BarRow = components['schemas']['BarRow']
+export interface DatasetBarsPage {
+  rows: BarRow[]
+  total: number
+  limit: number
+  offset: number
+}
 export type ImportStatus = components['schemas']['ImportStatus']
 export type DatasetStatus =
   | 'uploaded'
@@ -69,6 +77,16 @@ export interface DatasetListParams {
   limit?: number
   offset?: number
   [key: string]: string | number | boolean | undefined | null
+}
+
+export interface DatasetCleanInput {
+  remove_outside_session: boolean
+  remove_weekend_bars: boolean
+  remove_holiday_bars: boolean
+  remove_intraday_spike_days_over_10pct: boolean
+  remove_intraday_spike_days_over_20pct: boolean
+  remove_cross_day_spike_days_over_10pct: boolean
+  remove_cross_day_spike_days_over_20pct: boolean
 }
 
 export interface DatasetImportInput {

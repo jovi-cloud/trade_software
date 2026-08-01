@@ -46,7 +46,7 @@ class ComparisonService:
             row = self.runs.get(run_id)
             if row is None:
                 raise NotFoundError(f"Backtest run '{run_id}' not found")
-            run, strategy_name, dataset_name = row
+            run, strategy_name, dataset_name, _dataset_timezone = row
             analytics = self.backtest_runs.analytics_report_for(run)
             inputs.append(
                 ComparedRunInput(

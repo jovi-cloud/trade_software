@@ -6,6 +6,7 @@ from app.data.data_pipeline.metadata import (
     DETECTABLE_TIMEFRAMES_MS,
     QUALITY_REJECT_THRESHOLD,
     PipelineConfig,
+    SessionCleaningOptions,
     SessionConfig,
 )
 from app.data.data_pipeline.pipeline import (
@@ -21,6 +22,7 @@ __all__ = [
     "PipelineConfig",
     "PipelineReport",
     "PipelineResult",
+    "SessionCleaningOptions",
     "SessionConfig",
     "run_pipeline_from_bytes",
     "run_pipeline_from_path",

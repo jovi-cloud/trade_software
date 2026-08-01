@@ -1,4 +1,4 @@
-import { BookOpen, RefreshCw } from 'lucide-react'
+import { BookOpen, Download, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ResearchJournal } from '@/features/backtest-runs/components/ResearchJournal'
+import { downloadBacktestRunExport } from '@/features/backtest-runs/api'
 import { useBacktestRun } from '@/features/backtest-runs/queries'
 import { backtestRunToExecutionResult } from '@/features/backtest-runs/utils'
 import { ExecutionResultCard } from '@/features/backtests/components/ExecutionResultCard'
@@ -24,6 +25,8 @@ export default function BacktestRunDetailPage() {
   const navigate = useNavigate()
   const { data: run, isLoading, isError, error, refetch } = useBacktestRun(id)
   const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   if (isLoading) {
     return (
@@ -54,6 +57,18 @@ export default function BacktestRunDetailPage() {
     navigate('/backtests')
   }
 
+  const downloadExport = async () => {
+    setDownloadError(null)
+    setIsDownloading(true)
+    try {
+      await downloadBacktestRunExport(run.id)
+    } catch (err) {
+      setDownloadError(getErrorMessage(err, 'Unable to download this run.'))
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   const crumbs: Crumb[] = [
     ...(libraryId
       ? [
@@ -73,6 +88,10 @@ export default function BacktestRunDetailPage() {
         description={`${run.strategy_name} on ${run.dataset_name}`}
         actions={
           <>
+            <Button onClick={downloadExport} disabled={isDownloading} variant="outline">
+              <Download className="size-4" />
+              {isDownloading ? 'Preparing…' : 'Download'}
+            </Button>
             <Button onClick={rerun}>
               <RefreshCw className="size-4" />
               Run again
@@ -91,6 +110,10 @@ export default function BacktestRunDetailPage() {
           </>
         }
       />
+
+      {downloadError && (
+        <p className="mb-4 text-sm text-destructive">{downloadError}</p>
+      )}
 
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
@@ -207,6 +230,7 @@ export default function BacktestRunDetailPage() {
 
       <ExecutionResultCard
         result={executionResult}
+        displayTimezone={run.dataset_timezone}
         selectedBarIndex={selectedBarIndex}
         onBarSelect={setSelectedBarIndex}
       />

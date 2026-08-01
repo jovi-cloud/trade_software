@@ -59,6 +59,22 @@ def test_read_head_and_tail_span_multiple_row_groups(tmp_path: Path) -> None:
     assert tail["ts"].to_list() == list(range(34_980, 35_000))
 
 
+def test_read_slice_returns_offset_rows_in_order(tmp_path: Path) -> None:
+    path = tmp_path / "bars.parquet"
+    store.write_parquet(_bars(250), path)
+
+    middle = store.read_slice(path, 100, 5)
+
+    assert middle["ts"].to_list() == [100, 101, 102, 103, 104]
+
+
+def test_read_slice_past_end_returns_empty(tmp_path: Path) -> None:
+    path = tmp_path / "bars.parquet"
+    store.write_parquet(_bars(10), path)
+
+    assert store.read_slice(path, 10, 5).height == 0
+
+
 def test_delete_removes_file(tmp_path: Path) -> None:
     path = tmp_path / "bars.parquet"
     store.write_parquet(_bars(1), path)

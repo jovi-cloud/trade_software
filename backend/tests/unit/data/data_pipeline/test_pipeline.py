@@ -52,3 +52,35 @@ def test_cleaner_reports_blank_row_removal() -> None:
     cleaned, report = clean_raw(df)
     assert cleaned.height == 2
     assert any(a.action == "remove_blank_rows" for a in report.actions)
+
+
+def test_pipeline_removes_outside_session_when_configured() -> None:
+    df = pl.DataFrame(
+        {
+            "timestamp": [
+                "2024-01-01 09:15:00",
+                "2024-01-01 08:00:00",
+                "2024-01-01 09:17:00",
+            ],
+            "open": ["100", "100", "101.5"],
+            "high": ["101", "101", "103"],
+            "low": ["99", "99", "101"],
+            "close": ["100.5", "100.5", "102.5"],
+            "volume": ["1000", "1000", "900"],
+        }
+    )
+    from app.data.data_pipeline.metadata import SessionCleaningOptions
+
+    config = PipelineConfig(
+        timeframe=Timeframe.M1,
+        session=SessionConfig(timezone="UTC"),
+        session_cleaning=SessionCleaningOptions(remove_outside_session=True),
+    )
+    result = _run_pipeline(df, config)
+
+    assert result.bars.height == 2
+    assert any(
+        action.action == "remove_outside_session_bars"
+        for action in result.report.cleaning.actions
+    )
+    assert result.report.session.candles_outside_session == 0

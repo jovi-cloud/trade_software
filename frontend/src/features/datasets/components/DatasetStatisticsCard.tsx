@@ -1,37 +1,33 @@
+import { ChevronDown, ChevronUp } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate, formatInteger, formatNumber, formatPercent } from '@/lib/format'
 
 import type { Dataset } from '../types'
-
-interface PipelineStatistics {
-  total_bars: number
-  trading_days: number
-  average_daily_bars: number
-  min_price: number | null
-  max_price: number | null
-  average_volume: number | null
-  instrument: string
-  missing_bars: number
-  duplicate_bars: number
-  gap_percentage: number
-  quality_score: number
-  date_range_start?: string | null
-  date_range_end?: string | null
-  timeframe?: string | null
-}
+import type { PipelineReport } from '../pipelineTypes'
 
 interface DatasetStatisticsCardProps {
   dataset: Dataset
+  showQualityBreakdown: boolean
+  onToggleQualityBreakdown: () => void
 }
 
-export function DatasetStatisticsCard({ dataset }: DatasetStatisticsCardProps) {
-  const stats = (
-    dataset as Dataset & {
-      pipeline_report?: { statistics?: PipelineStatistics | null }
-    }
-  ).pipeline_report?.statistics
+export function DatasetStatisticsCard({
+  dataset,
+  showQualityBreakdown,
+  onToggleQualityBreakdown,
+}: DatasetStatisticsCardProps) {
+  const pipeline = (dataset as Dataset & { pipeline_report?: PipelineReport | null })
+    .pipeline_report
+  const stats = pipeline?.statistics
 
   if (!stats) return null
+
+  const qualityScore =
+    (dataset as Dataset & { quality_score?: number | null }).quality_score ??
+    pipeline?.quality_score ??
+    stats.quality_score
 
   return (
     <Card className="mb-4">
@@ -94,7 +90,23 @@ export function DatasetStatisticsCard({ dataset }: DatasetStatisticsCardProps) {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Quality score</dt>
-            <dd className="tabular mt-1 text-sm font-medium">{stats.quality_score}</dd>
+            <dd className="mt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="tabular h-auto px-0 text-sm font-medium hover:bg-transparent"
+                onClick={onToggleQualityBreakdown}
+              >
+                {qualityScore ?? '—'}
+                {showQualityBreakdown ? (
+                  <ChevronUp className="size-4" />
+                ) : (
+                  <ChevronDown className="size-4" />
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground">Click to see how this was calculated</p>
+            </dd>
           </div>
         </dl>
       </CardContent>

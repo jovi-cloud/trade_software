@@ -53,14 +53,17 @@ cp backend/.env.example backend/.env
 make dev
 ```
 
-Starts both servers and applies pending migrations first:
+Starts both servers and applies pending migrations first.
 
-| | URL |
+**Ports** default to **8001** (API) and **5174** (Vite) so they do not clash with
+other apps on 8000/5173. Edit `scripts/ports.env` to change them.
+
+| | URL (default ports) |
 |---|---|
-| Frontend | http://localhost:5173 |
-| API | http://127.0.0.1:8000/api/v1 |
-| API docs | http://127.0.0.1:8000/docs |
-| Health | http://127.0.0.1:8000/api/v1/system/health |
+| Frontend | http://localhost:5174 |
+| API | http://127.0.0.1:8001/api/v1 |
+| API docs | http://127.0.0.1:8001/docs |
+| Health | http://127.0.0.1:8001/api/v1/system/health |
 
 The dashboard shows a live backend status indicator — green means the API and
 database are both reachable.

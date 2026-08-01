@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # --- Server. Loopback only: this is a single-user local application. ---
     host: str = "127.0.0.1"
-    port: int = 8000
+    port: int = 8001
 
     # --- Storage. All user state lives under this one directory. ---
     data_dir: Path = Field(default_factory=default_data_dir)
@@ -60,7 +60,7 @@ class Settings(BaseSettings):
         default_factory=lambda: (
             []
             if is_frozen()
-            else ["http://localhost:5173", "http://127.0.0.1:5173"]
+            else ["http://localhost:5174", "http://127.0.0.1:5174"]
         )
     )
 

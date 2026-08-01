@@ -36,7 +36,7 @@ class DatasetVersion(Base, IdMixin, TimestampMixin):
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Kolkata")
     detected_timeframe: Mapped[str | None] = mapped_column(String(10), nullable=True)
     quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

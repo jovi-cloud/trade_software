@@ -942,6 +942,11 @@ export interface components {
             dataset_id: string;
             /** Dataset Name */
             dataset_name: string;
+            /**
+             * Dataset Timezone
+             * @default Asia/Kolkata
+             */
+            dataset_timezone?: string;
             /** Dataset Version Id */
             dataset_version_id?: string | null;
             /** Dataset Version Number */
@@ -2132,6 +2137,11 @@ export interface components {
              * @default []
              */
             large_jump_samples: string[];
+            /**
+             * Missing Details
+             * @default []
+             */
+            missing_details: string[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2766,6 +2776,31 @@ export interface components {
             /** Return Pct */
             return_pct: number;
         };
+        /** PriceAnomalyReportRead */
+        PriceAnomalyReportRead: {
+            spikes_over_10_pct: number;
+            spikes_over_20_pct: number;
+            cross_day_spikes_over_10_pct: number;
+            cross_day_spikes_over_20_pct: number;
+            days_with_spikes_over_10_pct: number;
+            days_with_spikes_over_20_pct: number;
+            bars_on_days_over_10_pct: number;
+            bars_on_days_over_20_pct: number;
+            intraday_bars_on_days_over_10_pct: number;
+            intraday_bars_on_days_over_20_pct: number;
+            cross_day_bars_on_days_over_10_pct: number;
+            cross_day_bars_on_days_over_20_pct: number;
+            spike_over_10_samples: string[];
+            spike_over_20_samples: string[];
+            cross_day_spike_over_10_samples: string[];
+            cross_day_spike_over_20_samples: string[];
+            intraday_days_over_10_samples: string[];
+            intraday_days_over_20_samples: string[];
+            cross_day_days_over_10_samples: string[];
+            cross_day_days_over_20_samples: string[];
+            days_over_10_samples: string[];
+            days_over_20_samples: string[];
+        };
         /**
          * PipelineReportRead
          * @description Full import pipeline report persisted on each dataset.
@@ -2789,6 +2824,7 @@ export interface components {
             rejected: boolean;
             /** Rejection Reason */
             rejection_reason?: string | null;
+            price_anomalies?: components["schemas"]["PriceAnomalyReportRead"];
         };
         /** PortfolioMetricsRead */
         PortfolioMetricsRead: {
@@ -3013,10 +3049,30 @@ export interface components {
              */
             unexpected_holiday_bars: number;
             /**
+             * Missing Opening Samples
+             * @default []
+             */
+            missing_opening_samples: string[];
+            /**
+             * Missing Closing Samples
+             * @default []
+             */
+            missing_closing_samples: string[];
+            /**
              * Outside Session Samples
              * @default []
              */
             outside_session_samples: string[];
+            /**
+             * Unexpected Weekend Samples
+             * @default []
+             */
+            unexpected_weekend_samples?: string[];
+            /**
+             * Unexpected Holiday Samples
+             * @default []
+             */
+            unexpected_holiday_samples?: string[];
         };
         /** StatisticalMetricsRead */
         StatisticalMetricsRead: {

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.hashing import hash_file
 from app.core.paths import DataPaths
-from app.data.data_pipeline import PipelineConfig, SessionConfig, run_pipeline_from_bytes
+from app.data.data_pipeline import PipelineConfig, SessionConfig, SessionCleaningOptions, run_pipeline_from_bytes
 from app.data.data_pipeline.importer import infer_columns
 from app.data.data_pipeline.parquet_writer import write_bars
 from app.data.data_pipeline.serialize import pipeline_report_to_dict
@@ -62,11 +62,12 @@ class ImportService:
         timeframe: Timeframe | None,
         content: bytes,
         filename: str,
-        timezone: str = "UTC",
+        timezone: str = "Asia/Kolkata",
         session_open: str = "09:15",
-        session_close: str = "15:30",
+        session_close: str = "15:25",
         column_mapping: dict[str, str] | None = None,
         dataset_id: str | None = None,
+        session_cleaning: SessionCleaningOptions | None = None,
     ) -> Dataset:
         name = name.strip()
         symbol = symbol.strip().upper()
@@ -92,6 +93,8 @@ class ImportService:
                 file_path="",
                 original_filename=original_filename,
                 timezone=timezone,
+                session_open=session_open,
+                session_close=session_close,
                 row_count=0,
                 status=DatasetStatus.UPLOADED,
                 import_status=ImportStatus.PROCESSING,
@@ -149,6 +152,7 @@ class ImportService:
             session_open=session_open,
             session_close=session_close,
             timeframe=timeframe,
+            session_cleaning=session_cleaning,
         )
         return dataset
 
@@ -178,8 +182,8 @@ class ImportService:
         content: bytes,
         filename: str,
         timezone: str | None = None,
-        session_open: str = "09:15",
-        session_close: str = "15:30",
+        session_open: str | None = None,
+        session_close: str | None = None,
         column_mapping: dict[str, str] | None = None,
         timeframe: Timeframe | None = None,
     ) -> Dataset:
@@ -194,16 +198,20 @@ class ImportService:
             content=content,
             filename=filename,
             timezone=timezone or dataset.timezone,
-            session_open=session_open,
-            session_close=session_close,
+            session_open=session_open or dataset.session_open,
+            session_close=session_close or dataset.session_close,
             column_mapping=column_mapping,
             dataset_id=dataset.id,
         )
 
-    def revalidate(self, dataset_id: str) -> Dataset:
+    def revalidate(self, dataset_id: str, *, timezone: str | None = None) -> Dataset:
         dataset = self.repo.get(dataset_id)
         if dataset is None:
             raise NotFoundError(f"Dataset '{dataset_id}' not found")
+
+        if timezone:
+            dataset.timezone = timezone.strip()
+            self.session.flush()
 
         latest_import = self.import_repo.latest_for_dataset(dataset_id)
         if latest_import is None:
@@ -228,7 +236,47 @@ class ImportService:
             content=content,
             filename=latest_import.filename,
             timezone=dataset.timezone,
+            session_open=dataset.session_open,
+            session_close=dataset.session_close,
             timeframe=Timeframe(dataset.timeframe) if dataset.timeframe else None,
+        )
+
+    def clean_dataset(
+        self,
+        dataset_id: str,
+        *,
+        session_cleaning: SessionCleaningOptions,
+    ) -> Dataset:
+        """Re-import from the stored upload, removing selected session violations."""
+        if not session_cleaning.enabled:
+            raise ValidationError("Select at least one cleaning option")
+
+        dataset = self.repo.get(dataset_id)
+        if dataset is None:
+            raise NotFoundError(f"Dataset '{dataset_id}' not found")
+
+        latest_import = self.import_repo.latest_for_dataset(dataset_id)
+        if latest_import is None:
+            raise NotFoundError("This dataset has no import history to clean")
+
+        suffix = Path(latest_import.filename).suffix.lower() or ".csv"
+        candidates = sorted(self.paths.imports.glob(f"{dataset.id}_v*{suffix}"), reverse=True)
+        if not candidates:
+            raise NotFoundError("The original file for this dataset is no longer on disk")
+
+        content = candidates[0].read_bytes()
+        return self.import_file(
+            name=dataset.name,
+            symbol=dataset.symbol,
+            exchange=dataset.exchange,
+            timeframe=Timeframe(dataset.timeframe) if dataset.timeframe else None,
+            content=content,
+            filename=latest_import.filename,
+            timezone=dataset.timezone,
+            session_open=dataset.session_open,
+            session_close=dataset.session_close,
+            dataset_id=dataset.id,
+            session_cleaning=session_cleaning,
         )
 
     def _process(
@@ -239,11 +287,12 @@ class ImportService:
         *,
         content: bytes,
         filename: str,
-        timezone: str = "UTC",
+        timezone: str = "Asia/Kolkata",
         session_open: str = "09:15",
-        session_close: str = "15:30",
+        session_close: str = "15:25",
         column_mapping: dict[str, str] | None = None,
         timeframe: Timeframe | None = None,
+        session_cleaning: SessionCleaningOptions | None = None,
     ) -> None:
         config = PipelineConfig(
             timeframe=timeframe or (Timeframe(dataset.timeframe) if dataset.timeframe else None),
@@ -253,6 +302,7 @@ class ImportService:
                 close_time=session_close,
                 timezone=timezone,
             ),
+            session_cleaning=session_cleaning or SessionCleaningOptions(),
             instrument=dataset.symbol,
             exchange=dataset.exchange,
         )
@@ -314,7 +364,15 @@ class ImportService:
             version.error_message = data_import.error_message
 
         dataset_status = dataset_status_from_version(version_status)
-        self._apply_current_version(dataset, version, data_import, dataset_status, report_dict)
+        self._apply_current_version(
+            dataset,
+            version,
+            data_import,
+            dataset_status,
+            report_dict,
+            session_open=session_open,
+            session_close=session_close,
+        )
         self.session.commit()
         self.session.refresh(dataset)
 
@@ -343,6 +401,9 @@ class ImportService:
         data_import: DataImport,
         dataset_status: DatasetStatus,
         report_dict: dict[str, object],
+        *,
+        session_open: str,
+        session_close: str,
     ) -> None:
         dataset.current_version_id = version.id
         dataset.current_version_number = version.version_number
@@ -352,6 +413,8 @@ class ImportService:
         dataset.quality_score = version.quality_score
         dataset.detected_timeframe = version.detected_timeframe
         dataset.timezone = version.timezone
+        dataset.session_open = session_open
+        dataset.session_close = session_close
         dataset.validation_errors = json.dumps(report_dict)
         if version.status == DatasetVersionStatus.VALID.value:
             dataset.file_path = version.file_path

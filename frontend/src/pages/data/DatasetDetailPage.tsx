@@ -11,8 +11,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ArchiveDatasetDialog } from '@/features/datasets/components/ArchiveDatasetDialog'
 import { DatasetPreviewTable } from '@/features/datasets/components/DatasetPreviewTable'
 import { DatasetStatisticsCard } from '@/features/datasets/components/DatasetStatisticsCard'
+import { DatasetTimezoneBanner } from '@/features/datasets/components/DatasetTimezoneBanner'
 import { DatasetVersionsPanel } from '@/features/datasets/components/DatasetVersionsPanel'
 import { DeleteDatasetDialog } from '@/features/datasets/components/DeleteDatasetDialog'
+import { QualityScoreBreakdownPanel } from '@/features/datasets/components/QualityScoreBreakdown'
 import { ValidationReportCard } from '@/features/datasets/components/ValidationReportCard'
 import { importStatusMeta } from '@/features/datasets/importStatusMeta'
 import {
@@ -35,6 +37,7 @@ export default function DatasetDetailPage() {
   const deleteDataset = useDeleteDataset()
   const [showArchive, setShowArchive] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
+  const [showQualityBreakdown, setShowQualityBreakdown] = useState(false)
 
   const isLoading = datasetQuery.isLoading || versionsQuery.isLoading || importsQuery.isLoading
   const isError = datasetQuery.isError
@@ -60,6 +63,8 @@ export default function DatasetDetailPage() {
   }
 
   const statusMeta = importStatusMeta(dataset.import_status)
+  const pipeline = dataset.pipeline_report
+  const qualityScore = dataset.quality_score ?? pipeline?.quality_score ?? null
 
   return (
     <div>
@@ -103,10 +108,35 @@ export default function DatasetDetailPage() {
             {formatDate(dataset.start_date)} → {formatDate(dataset.end_date)}
           </span>
         )}
+        <span className="text-sm text-muted-foreground">Timezone: {dataset.timezone}</span>
       </div>
 
-      <DatasetStatisticsCard dataset={dataset} />
-      <ValidationReportCard dataset={dataset} />
+      <DatasetTimezoneBanner dataset={dataset} onFixed={() => datasetQuery.refetch()} />
+
+      <DatasetStatisticsCard
+        dataset={dataset}
+        showQualityBreakdown={showQualityBreakdown}
+        onToggleQualityBreakdown={() => setShowQualityBreakdown((open) => !open)}
+      />
+      {showQualityBreakdown && (
+        <QualityScoreBreakdownPanel
+          datasetId={dataset.id}
+          pipeline={pipeline}
+          qualityScore={qualityScore}
+          sessionOpen={dataset.session_open}
+          sessionClose={dataset.session_close}
+          onCleanComplete={() => datasetQuery.refetch()}
+        />
+      )}
+      <ValidationReportCard
+        dataset={dataset}
+        onShowQualityBreakdown={() => {
+          setShowQualityBreakdown(true)
+          requestAnimationFrame(() => {
+            document.getElementById('quality-breakdown')?.scrollIntoView({ behavior: 'smooth' })
+          })
+        }}
+      />
 
       <div className="mb-6 space-y-4">
         <DatasetVersionsPanel
@@ -115,7 +145,12 @@ export default function DatasetDetailPage() {
           versions={versionsQuery.data ?? []}
           imports={importsQuery.data ?? []}
         />
-        <DatasetPreviewTable datasetId={dataset.id} />
+        <DatasetPreviewTable
+          key={`${dataset.id}-${dataset.current_version_number ?? 0}-${dataset.row_count}`}
+          datasetId={dataset.id}
+          totalBars={dataset.row_count}
+          timezone={dataset.timezone}
+        />
       </div>
 
       <ArchiveDatasetDialog
@@ -131,13 +166,26 @@ export default function DatasetDetailPage() {
 
       <DeleteDatasetDialog
         dataset={showDelete ? dataset : null}
-        onOpenChange={(open) => !open && setShowDelete(false)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowDelete(false)
+            deleteDataset.reset()
+          }
+        }}
         onConfirm={() => {
           deleteDataset.mutate(dataset.id, {
-            onSuccess: () => navigate('/data'),
+            onSuccess: () => {
+              setShowDelete(false)
+              navigate('/data')
+            },
           })
         }}
         isDeleting={deleteDataset.isPending}
+        errorMessage={
+          deleteDataset.isError
+            ? getErrorMessage(deleteDataset.error, 'Unable to delete this dataset.')
+            : null
+        }
       />
     </div>
   )

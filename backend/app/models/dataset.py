@@ -35,7 +35,9 @@ class Dataset(Base, IdMixin, TimestampMixin):
     file_path: Mapped[str] = mapped_column(Text, nullable=False, default="")
     original_filename: Mapped[str | None] = mapped_column(String(500), nullable=True)
     file_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Kolkata")
+    session_open: Mapped[str] = mapped_column(String(5), nullable=False, default="09:15")
+    session_close: Mapped[str] = mapped_column(String(5), nullable=False, default="15:25")
     detected_timeframe: Mapped[str | None] = mapped_column(String(10), nullable=True)
     quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

@@ -42,6 +42,13 @@ def read_head(path: Path, n: int) -> pl.DataFrame:
     return cast(pl.DataFrame, pl.from_arrow(table)).head(n)
 
 
+def read_slice(path: Path, offset: int, limit: int) -> pl.DataFrame:
+    """``limit`` rows starting at ``offset``, without reading the whole file."""
+    if limit <= 0:
+        return pl.DataFrame()
+    return pl.scan_parquet(path).slice(offset, limit).collect()
+
+
 def read_tail(path: Path, n: int) -> pl.DataFrame:
     """Last ``n`` rows, reading row groups from the end until enough rows are collected."""
     pf = pq.ParquetFile(path)

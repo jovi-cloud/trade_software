@@ -23,12 +23,17 @@ class BacktestRunRepository:
             .join(Dataset, BacktestRun.dataset_id == Dataset.id)
         )
 
-    def get(self, run_id: str) -> tuple[BacktestRun, str, str] | None:
-        row = self.session.execute(self._base_stmt().where(BacktestRun.id == run_id)).first()
+    def get(self, run_id: str) -> tuple[BacktestRun, str, str, str] | None:
+        row = self.session.execute(
+            select(BacktestRun, Strategy.name, Dataset.name, Dataset.timezone)
+            .join(Strategy, BacktestRun.strategy_id == Strategy.id)
+            .join(Dataset, BacktestRun.dataset_id == Dataset.id)
+            .where(BacktestRun.id == run_id)
+        ).first()
         if row is None:
             return None
-        run, strategy_name, dataset_name = row._tuple()
-        return run, strategy_name, dataset_name
+        run, strategy_name, dataset_name, dataset_timezone = row._tuple()
+        return run, strategy_name, dataset_name, dataset_timezone
 
     def add(self, run: BacktestRun) -> BacktestRun:
         self.session.add(run)

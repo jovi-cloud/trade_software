@@ -89,6 +89,19 @@ def test_preview_head_and_tail(db_session: Session, settings: Settings) -> None:
     assert tail.rows[0].open == 100.5
 
 
+def test_list_bars_returns_paginated_rows(db_session: Session, settings: Settings) -> None:
+    dataset = _import(db_session, settings)
+    service = DatasetService(db_session, get_data_paths(settings))
+
+    page = service.list_bars(dataset.id, offset=1, limit=1)
+
+    assert page.total == 2
+    assert page.offset == 1
+    assert page.limit == 1
+    assert len(page.rows) == 1
+    assert page.rows[0].open == 100.5
+
+
 def test_preview_raises_not_found_when_import_failed(
     db_session: Session, settings: Settings
 ) -> None:

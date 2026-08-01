@@ -52,7 +52,36 @@ class SessionReportRead(BaseModel):
     candles_outside_session: int = 0
     unexpected_weekend_bars: int = 0
     unexpected_holiday_bars: int = 0
+    missing_opening_samples: tuple[str, ...] = ()
+    missing_closing_samples: tuple[str, ...] = ()
     outside_session_samples: tuple[str, ...] = ()
+    unexpected_weekend_samples: tuple[str, ...] = ()
+    unexpected_holiday_samples: tuple[str, ...] = ()
+
+
+class PriceAnomalyReportRead(BaseModel):
+    spikes_over_10_pct: int = 0
+    spikes_over_20_pct: int = 0
+    cross_day_spikes_over_10_pct: int = 0
+    cross_day_spikes_over_20_pct: int = 0
+    days_with_spikes_over_10_pct: int = 0
+    days_with_spikes_over_20_pct: int = 0
+    bars_on_days_over_10_pct: int = 0
+    bars_on_days_over_20_pct: int = 0
+    intraday_bars_on_days_over_10_pct: int = 0
+    intraday_bars_on_days_over_20_pct: int = 0
+    cross_day_bars_on_days_over_10_pct: int = 0
+    cross_day_bars_on_days_over_20_pct: int = 0
+    spike_over_10_samples: tuple[str, ...] = ()
+    spike_over_20_samples: tuple[str, ...] = ()
+    cross_day_spike_over_10_samples: tuple[str, ...] = ()
+    cross_day_spike_over_20_samples: tuple[str, ...] = ()
+    intraday_days_over_10_samples: tuple[str, ...] = ()
+    intraday_days_over_20_samples: tuple[str, ...] = ()
+    cross_day_days_over_10_samples: tuple[str, ...] = ()
+    cross_day_days_over_20_samples: tuple[str, ...] = ()
+    days_over_10_samples: tuple[str, ...] = ()
+    days_over_20_samples: tuple[str, ...] = ()
 
 
 class GapReportRead(BaseModel):
@@ -65,6 +94,7 @@ class GapReportRead(BaseModel):
     gap_percentage: float
     missing_timestamps: tuple[str, ...] = ()
     large_jump_samples: tuple[str, ...] = ()
+    missing_details: tuple[str, ...] = ()
 
 
 class TimeframeReportRead(BaseModel):
@@ -103,6 +133,7 @@ class PipelineReportRead(BaseModel):
     quality_score: int = 0
     rejected: bool = False
     rejection_reason: str | None = None
+    price_anomalies: PriceAnomalyReportRead = Field(default_factory=PriceAnomalyReportRead)
 
 
 class DatasetRead(BaseModel):
@@ -116,7 +147,9 @@ class DatasetRead(BaseModel):
     file_path: str
     original_filename: str | None = None
     file_hash: str | None = None
-    timezone: str = "UTC"
+    timezone: str = "Asia/Kolkata"
+    session_open: str = "09:15"
+    session_close: str = "15:25"
     detected_timeframe: Timeframe | None = None
     quality_score: int | None = None
     row_count: int
@@ -181,6 +214,31 @@ class BarRow(BaseModel):
 
 class DatasetPreview(BaseModel):
     rows: list[BarRow]
+
+
+class DatasetBarsPage(BaseModel):
+    rows: list[BarRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class DatasetCleanRequest(BaseModel):
+    remove_outside_session: bool = True
+    remove_weekend_bars: bool = True
+    remove_holiday_bars: bool = False
+    remove_days_with_spikes_over_10pct: bool = False
+    remove_days_with_spikes_over_20pct: bool = False
+    remove_intraday_spike_days_over_10pct: bool = False
+    remove_intraday_spike_days_over_20pct: bool = False
+    remove_cross_day_spike_days_over_10pct: bool = False
+    remove_cross_day_spike_days_over_20pct: bool = False
+
+
+class DatasetRevalidateRequest(BaseModel):
+    """Optional timezone override when re-processing the stored upload."""
+
+    timezone: str | None = None
 
 
 class ImportPreviewResponse(BaseModel):

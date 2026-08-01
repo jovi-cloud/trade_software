@@ -109,7 +109,7 @@ export default function RunBacktestPage() {
 
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
-      {progress && (
+      {(isRunning || isCancelling) && progress && (
         <BacktestProgressBar
           progressPct={progress.progressPct}
           message={progress.message}
@@ -138,7 +138,9 @@ export default function RunBacktestPage() {
           cancelRef.current = cancel
 
           try {
-            setReceipt(await run)
+            const completed = await run
+            setProgress(null)
+            setReceipt(completed)
           } catch (err) {
             if (err instanceof BacktestCancelledError) {
               setProgress(null)
@@ -181,7 +183,10 @@ export default function RunBacktestPage() {
               onRetry={() => savedRun.refetch()}
             />
           ) : result ? (
-            <ExecutionResultCard result={result} />
+            <ExecutionResultCard
+              result={result}
+              displayTimezone={savedRun.data?.dataset_timezone}
+            />
           ) : (
             <div className="space-y-4">
               <Skeleton className="h-40" />

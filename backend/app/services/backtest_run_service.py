@@ -361,7 +361,7 @@ class BacktestRunService:
         self.session.commit()
         return run
 
-    def get(self, run_id: str) -> tuple[BacktestRun, str, str]:
+    def get(self, run_id: str) -> tuple[BacktestRun, str, str, str]:
         row = self.repo.get(run_id)
         if row is None:
             raise NotFoundError(f"Backtest run '{run_id}' not found")

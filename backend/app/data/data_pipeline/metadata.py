@@ -55,11 +55,44 @@ class SessionConfig:
     """Exchange session boundaries in local exchange time."""
 
     open_time: str = "09:15"
-    close_time: str = "15:30"
+    close_time: str = "15:25"
     timezone: str = "UTC"
     # Monday=0 … Sunday=6
     trading_days: tuple[int, ...] = (0, 1, 2, 3, 4)
     holidays: frozenset[str] = field(default_factory=frozenset)
+
+
+@dataclass(frozen=True)
+class SessionCleaningOptions:
+    remove_outside_session: bool = False
+    remove_weekend_bars: bool = False
+    remove_holiday_bars: bool = False
+    remove_days_with_spikes_over_10pct: bool = False
+    remove_days_with_spikes_over_20pct: bool = False
+    remove_intraday_spike_days_over_10pct: bool = False
+    remove_intraday_spike_days_over_20pct: bool = False
+    remove_cross_day_spike_days_over_10pct: bool = False
+    remove_cross_day_spike_days_over_20pct: bool = False
+
+    @property
+    def enabled(self) -> bool:
+        return (
+            self.remove_outside_session
+            or self.remove_weekend_bars
+            or self.remove_holiday_bars
+            or self.price_anomaly_cleaning_enabled
+        )
+
+    @property
+    def price_anomaly_cleaning_enabled(self) -> bool:
+        return (
+            self.remove_days_with_spikes_over_10pct
+            or self.remove_days_with_spikes_over_20pct
+            or self.remove_intraday_spike_days_over_10pct
+            or self.remove_intraday_spike_days_over_20pct
+            or self.remove_cross_day_spike_days_over_10pct
+            or self.remove_cross_day_spike_days_over_20pct
+        )
 
 
 @dataclass(frozen=True)
@@ -69,6 +102,7 @@ class PipelineConfig:
     timeframe: Timeframe | None = None
     column_mapping: Mapping[str, str] = field(default_factory=dict)
     session: SessionConfig = field(default_factory=SessionConfig)
+    session_cleaning: SessionCleaningOptions = field(default_factory=SessionCleaningOptions)
     remove_duplicate_rows: bool = True
     instrument: str = ""
     exchange: str = ""
