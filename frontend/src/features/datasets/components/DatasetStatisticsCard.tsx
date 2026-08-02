@@ -80,7 +80,8 @@ export function DatasetStatisticsCard({
             <div className="sm:col-span-2">
               <dt className="text-xs text-muted-foreground">Coverage</dt>
               <dd className="tabular mt-1 text-sm">
-                {formatDate(stats.date_range_start)} → {formatDate(stats.date_range_end)}
+                {formatDate(stats.date_range_start, dataset.timezone)} →{' '}
+                {formatDate(stats.date_range_end, dataset.timezone)}
               </dd>
             </div>
           )}

@@ -110,7 +110,8 @@ export function DatasetVersionSelector({
             <div>
               <p className="text-xs text-muted-foreground">Date range</p>
               <p>
-                {formatDate(selected.start_date)} – {formatDate(selected.end_date)}
+                {formatDate(selected.start_date, selected.timezone)} –{' '}
+                {formatDate(selected.end_date, selected.timezone)}
               </p>
             </div>
             <div className="sm:col-span-2">

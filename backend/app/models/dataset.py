@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, IdMixin, TimestampMixin
+from app.db.base import Base, IdMixin, TimestampMixin, UTCDateTime
 from app.domain.enums import DatasetLifecycle, DatasetStatus, ImportStatus
 
 
@@ -42,8 +42,8 @@ class Dataset(Base, IdMixin, TimestampMixin):
     quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    start_date: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    end_date: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     lifecycle: Mapped[str] = mapped_column(
         String(20), nullable=False, default=DatasetLifecycle.ACTIVE
@@ -55,4 +55,4 @@ class Dataset(Base, IdMixin, TimestampMixin):
     # JSON-encoded PipelineReport; null while processing.
     validation_errors: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)

@@ -20,6 +20,10 @@ dependencies = [
     "openpyxl>=3.1",
     "pandas>=2.2",
     "numpy>=2.1",
+    # Windows (the packaged desktop target, app/desktop/) ships no IANA time
+    # zone database, so zoneinfo.ZoneInfo("Asia/Kolkata") - used everywhere a
+    # bar's exchange-local session time is derived - would fail without this.
+    "tzdata>=2024.2",
 ]
 
 [dependency-groups]

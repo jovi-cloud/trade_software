@@ -52,7 +52,7 @@ class PerformanceAnalytics:
             trades=data.trades,
             initial_capital=data.initial_capital,
         )
-        daily = build_daily_series(series)
+        daily = build_daily_series(series, timezone=config.session_timezone)
         drawdowns = build_drawdown_series(series)
         drawdown_metrics = compute_drawdown_metrics(drawdowns)
         dispersion = build_dispersion_basis(daily, config)
@@ -94,8 +94,12 @@ class PerformanceAnalytics:
             drawdowns=drawdowns,
             drawdown_metrics=drawdown_metrics,
             daily=daily,
-            monthly_returns=compute_monthly_returns(daily, initial_capital=data.initial_capital),
-            yearly_returns=compute_yearly_returns(daily, initial_capital=data.initial_capital),
+            monthly_returns=compute_monthly_returns(
+                daily, initial_capital=data.initial_capital, timezone=config.session_timezone
+            ),
+            yearly_returns=compute_yearly_returns(
+                daily, initial_capital=data.initial_capital, timezone=config.session_timezone
+            ),
             config=config,
         )
 

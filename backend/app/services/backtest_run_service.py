@@ -11,7 +11,7 @@ from pathlib import Path
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import Session
 
-from app.analytics import AnalyticsReport
+from app.analytics import AnalyticsConfig, AnalyticsReport
 from app.analytics.serialize import report_from_json
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.hashing import hash_file, hash_text
@@ -234,7 +234,9 @@ class BacktestRunService:
         completed_at = utcnow()
         payload = _serialize_result(result, initial_capital=config.initial_capital)
         report = analytics or self.analytics.analyse_result(
-            result, initial_capital=config.initial_capital
+            result,
+            initial_capital=config.initial_capital,
+            config=AnalyticsConfig(session_timezone=config.session_timezone),
         )
         status = BacktestRunStatus.COMPLETED if result.completed else BacktestRunStatus.FAILED
         error_message = "; ".join(result.errors) if result.errors else None
@@ -377,10 +379,12 @@ class BacktestRunService:
             except (PydanticValidationError, KeyError, TypeError, ValueError):
                 pass
 
+        dataset = self.dataset_repo.get(run.dataset_id)
         report = self.analytics.analyse_snapshot(
             trades=json.loads(run.trades_json),
             candles=json.loads(run.candles_json),
             initial_capital=run.initial_capital,
+            config=AnalyticsConfig(session_timezone=dataset.timezone if dataset else "UTC"),
         )
         run.analytics_json = AnalyticsService.to_json(report)
         for column, value in _headline_columns(report).items():

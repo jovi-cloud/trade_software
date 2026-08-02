@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Integer, String, Text
+from sqlalchemy import CheckConstraint, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, IdMixin, TimestampMixin
+from app.db.base import Base, IdMixin, TimestampMixin, UTCDateTime
 from app.domain.enums import MarketType, Priority, StrategyStatus
 
 
@@ -57,7 +57,7 @@ class Strategy(Base, IdMixin, TimestampMixin):
     # 3.2) can replace this without touching callers if tagging grows more complex.
     tags: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Soft delete: list/get/search exclude rows where this is set.
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     # Set when this row exists to hold the run history of a built-in strategy
     # rather than a hand-written idea. Deliberately not unique: a soft-deleted

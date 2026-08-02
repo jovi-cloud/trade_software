@@ -20,6 +20,8 @@ commission and slippage. The realised leg is always net of both.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import numpy as np
 from numpy.typing import NDArray
@@ -171,9 +173,25 @@ def build_equity_series(
     )
 
 
+def _utc_offset_ms(ts_ms: int, timezone: str) -> int:
+    """UTC offset, in milliseconds, of ``timezone`` at the instant ``ts_ms``.
+
+    One offset for the whole run rather than a per-bar lookup: exact for
+    ``Asia/Kolkata`` (no DST, ever), and for any other fixed-offset exchange
+    zone. A run that happens to straddle a DST transition in a zone that
+    observes one may misattribute a handful of bars near that boundary - a
+    rare edge case, and still strictly better than bucketing everything by
+    the wrong calendar day the way raw UTC does for every single day.
+    """
+    moment = datetime.fromtimestamp(ts_ms / 1000, tz=UTC)
+    offset = moment.astimezone(ZoneInfo(timezone)).utcoffset()
+    return int(offset.total_seconds() * 1000) if offset is not None else 0
+
+
 @dataclass(frozen=True)
 class DailySeries:
-    """Equity sampled at each UTC day's last bar, and the returns between them.
+    """Equity sampled at each exchange-local day's last bar, and the returns
+    between them.
 
     Daily is the basis for every dispersion statistic. Annualising raw 1m-bar
     returns would make the same strategy look wildly different on 1m and 1d
@@ -208,12 +226,22 @@ class DailySeries:
         )
 
 
-def build_daily_series(series: EquitySeries) -> DailySeries:
-    """Collapse a per-bar equity curve to one closing value per UTC day."""
+def build_daily_series(series: EquitySeries, *, timezone: str = "UTC") -> DailySeries:
+    """Collapse a per-bar equity curve to one closing value per exchange-local day.
+
+    ``timezone`` is the exchange the bars trade in (``dataset.timezone`` /
+    ``ExecutionConfig.session_timezone``), not the server's or viewer's. A bar
+    stamped at midnight local time - the common convention for a daily-bar
+    dataset - sits on the *previous* UTC calendar day for any zone east of
+    UTC, so bucketing by raw UTC would silently misattribute every single
+    trading day (and, at a month or year boundary, an entire period) to the
+    wrong bucket for a dataset that trades outside UTC, e.g. NSE's Asia/Kolkata.
+    """
     if series.is_empty:
         return DailySeries.empty()
 
-    day_index = series.ts // MS_PER_DAY
+    offset_ms = _utc_offset_ms(int(series.ts[0]), timezone)
+    day_index = (series.ts + offset_ms) // MS_PER_DAY
     days = np.unique(day_index)
     # Bars are ascending, so the last bar of each day is the position before
     # the next day starts.
@@ -226,7 +254,11 @@ def build_daily_series(series: EquitySeries) -> DailySeries:
         returns_pct = np.where(previous != 0.0, (equity / previous - 1.0) * 100.0, 0.0)
 
     return DailySeries(
-        day_ms=days * MS_PER_DAY,
+        # The actual UTC instant of that exchange-local day's midnight - a
+        # real, valid timestamp, not a UTC day boundary - so callers that
+        # re-derive the calendar date (``periods.py``) or display it
+        # (``formatTimestamp`` in the given ``timezone``) see the same date.
+        day_ms=days * MS_PER_DAY - offset_ms,
         equity=equity,
         returns_pct=np.nan_to_num(returns_pct, nan=0.0, posinf=0.0, neginf=0.0),
         pnl=pnl,

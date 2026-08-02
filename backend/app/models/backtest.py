@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, IdMixin, TimestampMixin
+from app.db.base import Base, IdMixin, TimestampMixin, UTCDateTime
 from app.domain.enums import BacktestRunStatus
 
 
@@ -34,16 +34,12 @@ class BacktestRun(Base, IdMixin, TimestampMixin):
     dataset_import_id: Mapped[str | None] = mapped_column(
         String(26), ForeignKey("data_imports.id"), nullable=True
     )
-    dataset_imported_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    dataset_imported_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     dataset_quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     engine_version: Mapped[str] = mapped_column(String(20), nullable=False)
-    execution_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    execution_completed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    execution_started_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+    execution_completed_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     execution_time_ms: Mapped[float] = mapped_column(Float, nullable=False)
 
     initial_capital: Mapped[float] = mapped_column(Float, nullable=False)

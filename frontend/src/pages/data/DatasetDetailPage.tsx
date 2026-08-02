@@ -105,7 +105,8 @@ export default function DatasetDetailPage() {
         </span>
         {dataset.start_date && dataset.end_date && (
           <span className="text-sm text-muted-foreground">
-            {formatDate(dataset.start_date)} → {formatDate(dataset.end_date)}
+            {formatDate(dataset.start_date, dataset.timezone)} →{' '}
+            {formatDate(dataset.end_date, dataset.timezone)}
           </span>
         )}
         <span className="text-sm text-muted-foreground">Timezone: {dataset.timezone}</span>

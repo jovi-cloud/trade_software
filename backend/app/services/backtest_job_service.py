@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.analytics import AnalyticsConfig
 from app.core.exceptions import JobCancelledError
 from app.core.paths import DataPaths
 from app.db.base import utcnow
@@ -97,6 +98,7 @@ class BacktestJobService:
         report = AnalyticsService().analyse_result(
             result,
             initial_capital=plan.config.initial_capital,
+            config=AnalyticsConfig(session_timezone=plan.config.session_timezone),
         )
         check_cancelled()
         report_progress(

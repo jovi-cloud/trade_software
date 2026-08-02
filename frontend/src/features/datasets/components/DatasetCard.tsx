@@ -61,7 +61,7 @@ export function DatasetCard({ dataset, onDeleteRequest }: DatasetCardProps) {
         </div>
         <p className="tabular text-xs text-muted-foreground">
           {dataset.start_date && dataset.end_date
-            ? `${formatDate(dataset.start_date)} → ${formatDate(dataset.end_date)}`
+            ? `${formatDate(dataset.start_date, dataset.timezone)} → ${formatDate(dataset.end_date, dataset.timezone)}`
             : 'No date range'}
         </p>
         <p className="text-xs text-muted-foreground">Imported {formatDate(dataset.created_at)}</p>

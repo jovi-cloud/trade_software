@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from app.analytics import _numeric as num
 from app.analytics.equity import DailySeries
@@ -34,15 +35,22 @@ class CalendarPeriod:
 
 
 def aggregate_periods(
-    daily: DailySeries, *, initial_capital: float, by_month: bool
+    daily: DailySeries, *, initial_capital: float, by_month: bool, timezone: str = "UTC"
 ) -> tuple[CalendarPeriod, ...]:
-    """Collapse daily equity into UTC calendar periods, oldest first."""
+    """Collapse daily equity into exchange-local calendar periods, oldest first.
+
+    ``daily.day_ms`` is already the exchange-local midnight of each trading
+    day (``build_daily_series``), expressed as a UTC instant - so it must be
+    read back through the same ``timezone`` to recover the calendar year and
+    month it actually belongs to.
+    """
     if daily.is_empty:
         return ()
 
+    zone = ZoneInfo(timezone)
     buckets: dict[tuple[int, int], list[int]] = {}
     for index, day_ms in enumerate(daily.day_ms.tolist()):
-        moment = datetime.fromtimestamp(day_ms / 1000, tz=UTC)
+        moment = datetime.fromtimestamp(day_ms / 1000, tz=UTC).astimezone(zone)
         key = (moment.year, moment.month if by_month else 0)
         buckets.setdefault(key, []).append(index)
 

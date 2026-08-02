@@ -50,9 +50,19 @@ export function formatTimestamp(
   return new Date(epochMs).toLocaleString('en-IN', { timeZone })
 }
 
-export function formatDate(value: string | number | null | undefined): string {
+/**
+ * Calendar dates (created/updated/imported, dataset date ranges) are always
+ * shown in a fixed timezone rather than the viewer's browser timezone, so the
+ * same record reads identically for everyone. Without this, two people (or
+ * one person with a misconfigured OS clock) can see different calendar dates
+ * for the same underlying instant.
+ */
+export function formatDate(
+  value: string | number | null | undefined,
+  timeZone: string = DEFAULT_EXCHANGE_TIMEZONE,
+): string {
   if (value === null || value === undefined) return PLACEHOLDER
-  return new Date(value).toLocaleDateString()
+  return new Date(value).toLocaleDateString('en-IN', { timeZone })
 }
 
 export function formatDuration(ms: number | null | undefined): string {

@@ -26,7 +26,7 @@ class MonthlyReturn:
 
 
 def compute_monthly_returns(
-    daily: DailySeries, *, initial_capital: float
+    daily: DailySeries, *, initial_capital: float, timezone: str = "UTC"
 ) -> tuple[MonthlyReturn, ...]:
     """Month-by-month returns, ordered oldest first."""
     return tuple(
@@ -39,5 +39,7 @@ def compute_monthly_returns(
             end_equity=period.end_equity,
             trading_days=period.trading_days,
         )
-        for period in aggregate_periods(daily, initial_capital=initial_capital, by_month=True)
+        for period in aggregate_periods(
+            daily, initial_capital=initial_capital, by_month=True, timezone=timezone
+        )
     )

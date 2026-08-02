@@ -93,6 +93,13 @@ class AnalyticsConfig:
     #: Supplied, the Information Ratio is computed; omitted, it is ``None``.
     benchmark_daily_returns_pct: tuple[float, ...] = ()
 
+    #: Exchange the bars trade in (``dataset.timezone`` /
+    #: ``ExecutionConfig.session_timezone``). Trading days, and the monthly and
+    #: yearly tables built from them, are bucketed by this calendar - not UTC -
+    #: so a dataset outside UTC (NSE's Asia/Kolkata) reports the calendar day
+    #: its bars actually traded on.
+    session_timezone: str = "UTC"
+
     def __post_init__(self) -> None:
         if not 50.0 <= self.var_confidence_pct < 100.0:
             raise ValueError("var_confidence_pct must be in [50, 100)")

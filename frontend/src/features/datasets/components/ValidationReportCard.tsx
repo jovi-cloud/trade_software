@@ -174,7 +174,7 @@ export function ValidationReportCard({
             <p className="text-xs text-muted-foreground">Date range</p>
             <p className="tabular mt-1 text-sm">
               {report.start_date && report.end_date
-                ? `${formatDate(report.start_date)} → ${formatDate(report.end_date)}`
+                ? `${formatDate(report.start_date, dataset.timezone)} → ${formatDate(report.end_date, dataset.timezone)}`
                 : '--'}
             </p>
           </div>
