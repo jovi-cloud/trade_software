@@ -298,7 +298,7 @@ export function parseSessionExit(
   if (!/^\d{1,2}:\d{2}$/.test(at)) {
     return { ok: false, error: 'Session exit time must be HH:MM (24-hour).' }
   }
-  const [hours, minutes] = at.split(':').map(Number)
+  const [hours = 0, minutes = 0] = at.split(':').map(Number)
   if (hours > 23 || minutes > 59) {
     return { ok: false, error: 'Session exit time must be a valid 24-hour HH:MM value.' }
   }
@@ -344,9 +344,9 @@ export function toExecuteInput(
           entry_window_end: entryWindow.end,
         }
       : {}),
+    override_stop_loss: stopLossOverride !== null,
     ...(stopLossOverride !== null
       ? {
-          override_stop_loss: true,
           stop_loss_override_mode: stopLossOverride.mode,
           ...(stopLossOverride.value !== undefined
             ? { stop_loss_value: stopLossOverride.value }
@@ -355,15 +355,11 @@ export function toExecuteInput(
       : {}),
     enable_session_exit: sessionExit.enabled,
     session_exit_at: sessionExit.at,
-    ...(state.skipTradesOnPriceAnomalyDays
-      ? {
-          skip_trades_on_price_anomaly_days: true,
-          skip_trades_on_intraday_anomalies_10pct: state.skipTradesOnIntradayAnomalies10pct,
-          skip_trades_on_intraday_anomalies_20pct: state.skipTradesOnIntradayAnomalies20pct,
-          skip_trades_on_cross_day_anomalies_10pct: state.skipTradesOnCrossDayAnomalies10pct,
-          skip_trades_on_cross_day_anomalies_20pct: state.skipTradesOnCrossDayAnomalies20pct,
-        }
-      : {}),
+    skip_trades_on_price_anomaly_days: state.skipTradesOnPriceAnomalyDays,
+    skip_trades_on_intraday_anomalies_10pct: state.skipTradesOnIntradayAnomalies10pct,
+    skip_trades_on_intraday_anomalies_20pct: state.skipTradesOnIntradayAnomalies20pct,
+    skip_trades_on_cross_day_anomalies_10pct: state.skipTradesOnCrossDayAnomalies10pct,
+    skip_trades_on_cross_day_anomalies_20pct: state.skipTradesOnCrossDayAnomalies20pct,
   }
   if (state.source === 'library') {
     return {

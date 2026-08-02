@@ -43,7 +43,7 @@ export function computeQualityBreakdown(
   if (!pipeline) return null
 
   const validation = pipeline.validation
-  const session = pipeline.session ?? {
+  const session: PipelineSession = pipeline.session ?? {
     missing_opening_candles: 0,
     missing_closing_candles: 0,
     candles_outside_session: 0,
@@ -52,6 +52,8 @@ export function computeQualityBreakdown(
     missing_opening_samples: [],
     missing_closing_samples: [],
     outside_session_samples: [],
+    unexpected_weekend_samples: [],
+    unexpected_holiday_samples: [],
   }
   const gaps = pipeline.gaps
   const total = Math.max(validation.total_rows, 1)

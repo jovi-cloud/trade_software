@@ -175,6 +175,7 @@ describe('submitting', () => {
       null,
       null,
       null,
+      { enabled: true, at: '14:55' },
     )
 
     expect(input.strategy_id).toBeUndefined()
@@ -200,6 +201,7 @@ describe('submitting', () => {
       null,
       null,
       null,
+      { enabled: true, at: '14:55' },
     )
 
     expect(input.strategy_id).toBe('strategy-id')

@@ -87,10 +87,11 @@ export function trailingStopToSeriesData(
 
   const data: Array<{ time: UTCTimestamp; value?: number }> = []
   for (const tradePoints of [...grouped.values()].toSorted(
-    (left, right) => left[0].ts - right[0].ts,
+    (left, right) => (left[0]?.ts ?? 0) - (right[0]?.ts ?? 0),
   )) {
-    if (data.length > 0) {
-      data.push({ time: toChartTime(tradePoints[0].ts) })
+    const firstPoint = tradePoints[0]
+    if (data.length > 0 && firstPoint) {
+      data.push({ time: toChartTime(firstPoint.ts) })
     }
     for (const point of tradePoints) {
       data.push({ time: toChartTime(point.ts), value: point.level })
