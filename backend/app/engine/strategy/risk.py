@@ -367,6 +367,11 @@ def apply_stop_loss_override(rules: RiskRules, override: StopLossOverride) -> Ri
     return replace(rules, stop_loss=AtrDistance(override.atr_multiple))
 
 
+def apply_session_exit_override(rules: RiskRules, exit_at: str) -> RiskRules:
+    """Force a run-level flatten time, overriding any strategy-declared session exit."""
+    return replace(rules, exit_at_time=exit_at)
+
+
 # ---------------------------------------------------------------------------
 # Per-trade evaluation
 # ---------------------------------------------------------------------------

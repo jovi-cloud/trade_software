@@ -54,6 +54,7 @@ from app.engine.strategy.risk import (
     RiskRules,
     TradeRiskState,
     apply_stop_loss_override,
+    apply_session_exit_override,
     evaluate_risk_exit,
 )
 
@@ -318,10 +319,17 @@ class StrategyBase:
         self._risk = self.declare_risk()
         if self.ctx.stop_loss_override is not None:
             self._risk = apply_stop_loss_override(self._risk, self.ctx.stop_loss_override)
+        if self.ctx.session_exit_at is not None:
+            self._risk = apply_session_exit_override(self._risk, self.ctx.session_exit_at)
         if self._risk.needs_atr:
             self._atr = AverageTrueRange(self._risk.atr_period)
-        if self._risk.needs_session_clock:
-            self._clock = SessionClock(self.session_timezone)
+        if self._risk.needs_session_clock or self.ctx.session_exit_at is not None:
+            clock_tz = (
+                self.session_timezone
+                if SESSION_TIMEZONE_PARAM in self.params
+                else self.ctx.exchange_timezone
+            )
+            self._clock = SessionClock(clock_tz)
 
         indicator_warmup = max(
             (indicator.warmup_bars for indicator in self._indicators.values()), default=0

@@ -215,6 +215,38 @@ export function ExecutionSettings({
         )}
       </div>
 
+      <div className="space-y-3 rounded-md border border-border p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Session exit</p>
+            <p className="text-xs text-muted-foreground">
+              Close any open position at this exchange-local time when stop-loss and
+              take-profit did not fire. Uses the dataset timezone (e.g. 14:55 IST).
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant={state.enableSessionExit ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChange({ enableSessionExit: !state.enableSessionExit })}
+          >
+            {state.enableSessionExit ? 'Enabled' : 'Disabled'}
+          </Button>
+        </div>
+        {state.enableSessionExit && (
+          <div className="space-y-2 sm:max-w-xs">
+            <Label htmlFor="session-exit-at">Exit time</Label>
+            <Input
+              id="session-exit-at"
+              type="time"
+              step={60}
+              value={state.sessionExitAt}
+              onChange={(event) => onChange({ sessionExitAt: event.target.value })}
+            />
+          </div>
+        )}
+      </div>
+
       {showStopLossOverride && (
         <div className="space-y-3 rounded-md border border-border p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">

@@ -112,6 +112,26 @@ class BacktestExecuteRequest(BaseModel):
         gt=0,
         description="Stop distance: percent (e.g. 2.0) or ATR multiple (e.g. 1.5).",
     )
+    enable_session_exit: bool = Field(
+        default=True,
+        description=(
+            "Flatten any open position at session_exit_at exchange time when stop-loss "
+            "and take-profit did not fire first."
+        ),
+    )
+    session_exit_at: str = Field(
+        default="14:55",
+        description="Exchange-local HH:MM for the mandatory session flatten (default 14:55 IST).",
+    )
+
+    @model_validator(mode="after")
+    def _check_session_exit(self) -> BacktestExecuteRequest:
+        if not self.enable_session_exit:
+            return self
+        from app.engine.execution.entry_window import normalize_hhmm
+
+        normalize_hhmm(self.session_exit_at)
+        return self
 
     @model_validator(mode="after")
     def _check_stop_loss_override(self) -> BacktestExecuteRequest:

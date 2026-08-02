@@ -57,6 +57,8 @@ class BacktestJobService:
             override_stop_loss=payload.override_stop_loss,
             stop_loss_override_mode=payload.stop_loss_override_mode,
             stop_loss_value=payload.stop_loss_value,
+            enable_session_exit=payload.enable_session_exit,
+            session_exit_at=payload.session_exit_at,
         )
         started_at = utcnow()
 

@@ -30,6 +30,7 @@ export const DEFAULT_ENTRY_WINDOW_START = '09:15'
 export const DEFAULT_ENTRY_WINDOW_END = '15:25'
 export const DEFAULT_STOP_LOSS_PERCENT = '2'
 export const DEFAULT_STOP_LOSS_ATR = '2'
+export const DEFAULT_SESSION_EXIT = '14:55'
 
 export interface WorkflowState {
   source: StrategySource
@@ -68,6 +69,8 @@ export interface WorkflowState {
   overrideStopLoss: boolean
   stopLossOverrideMode: 'percent' | 'atr' | 'disabled'
   stopLossValue: string
+  enableSessionExit: boolean
+  sessionExitAt: string
 }
 
 export function createInitialWorkflow(): WorkflowState {
@@ -98,6 +101,8 @@ export function createInitialWorkflow(): WorkflowState {
     overrideStopLoss: false,
     stopLossOverrideMode: 'percent',
     stopLossValue: DEFAULT_STOP_LOSS_PERCENT,
+    enableSessionExit: true,
+    sessionExitAt: DEFAULT_SESSION_EXIT,
   }
 }
 
@@ -283,6 +288,26 @@ export function parseStopLossOverride(
   return { ok: true, value: { mode: state.stopLossOverrideMode, value } }
 }
 
+export function parseSessionExit(
+  state: WorkflowState,
+): { ok: false; error: string } | { ok: true; value: { enabled: boolean; at: string } } {
+  if (!state.enableSessionExit) {
+    return { ok: true, value: { enabled: false, at: DEFAULT_SESSION_EXIT } }
+  }
+  const at = state.sessionExitAt.trim()
+  if (!/^\d{1,2}:\d{2}$/.test(at)) {
+    return { ok: false, error: 'Session exit time must be HH:MM (24-hour).' }
+  }
+  const [hours, minutes] = at.split(':').map(Number)
+  if (hours > 23 || minutes > 59) {
+    return { ok: false, error: 'Session exit time must be a valid 24-hour HH:MM value.' }
+  }
+  return {
+    ok: true,
+    value: { enabled: true, at: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}` },
+  }
+}
+
 export type ExecuteInput = components['schemas']['BacktestExecuteRequest']
 
 /**
@@ -300,6 +325,7 @@ export function toExecuteInput(
   maxTradesPerDay: number | null,
   entryWindow: { start: string; end: string } | null,
   stopLossOverride: StopLossOverrideInput | null,
+  sessionExit: { enabled: boolean; at: string },
 ): ExecuteInput {
   const shared = {
     dataset_id: state.datasetId,
@@ -327,6 +353,8 @@ export function toExecuteInput(
             : {}),
         }
       : {}),
+    enable_session_exit: sessionExit.enabled,
+    session_exit_at: sessionExit.at,
     ...(state.skipTradesOnPriceAnomalyDays
       ? {
           skip_trades_on_price_anomaly_days: true,

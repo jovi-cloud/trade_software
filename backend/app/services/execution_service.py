@@ -148,6 +148,7 @@ class ExecutionService:
         entry_window_start: str | None = None,
         entry_window_end: str | None = None,
         stop_loss_override: StopLossOverride | None = None,
+        session_exit_at: str | None = None,
     ) -> ExecutionConfig:
         return ExecutionConfig(
             initial_capital=initial_capital,
@@ -162,7 +163,20 @@ class ExecutionService:
             entry_window_start=entry_window_start,
             entry_window_end=entry_window_end,
             stop_loss_override=stop_loss_override,
+            session_exit_at=session_exit_at,
         )
+
+    @staticmethod
+    def resolve_session_exit_at(
+        *,
+        enable_session_exit: bool,
+        session_exit_at: str,
+    ) -> str | None:
+        if not enable_session_exit:
+            return None
+        from app.engine.execution.entry_window import normalize_hhmm
+
+        return normalize_hhmm(session_exit_at)
 
     @staticmethod
     def resolve_stop_loss_override(
@@ -203,6 +217,8 @@ class ExecutionService:
         override_stop_loss: bool = False,
         stop_loss_override_mode: str | None = None,
         stop_loss_value: float | None = None,
+        enable_session_exit: bool = True,
+        session_exit_at: str = "14:55",
     ) -> RunPlan:
         """Resolve one run request into something the engine can be handed.
 
@@ -263,6 +279,10 @@ class ExecutionService:
                 override_stop_loss=override_stop_loss,
                 stop_loss_override_mode=stop_loss_override_mode,
                 stop_loss_value=stop_loss_value,
+            ),
+            session_exit_at=self.resolve_session_exit_at(
+                enable_session_exit=enable_session_exit,
+                session_exit_at=session_exit_at,
             ),
         )
         return RunPlan(
@@ -498,6 +518,17 @@ class ExecutionService:
                     "ATR at entry for this run."
                 )
             result = replace(result, warnings=(*result.warnings, message))
+        if config.session_exit_at is not None:
+            result = replace(
+                result,
+                warnings=(
+                    *result.warnings,
+                    (
+                        f"Open positions were flattened at {config.session_exit_at} "
+                        f"{config.session_timezone} when stop-loss and take-profit did not fire."
+                    ),
+                ),
+            )
         if should_cancel is not None and should_cancel():
             raise JobCancelledError("Backtest cancelled")
         enriched = self.metrics_service.enrich(result, initial_capital=config.initial_capital)

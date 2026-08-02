@@ -57,6 +57,8 @@ class ExecutionContext:
         stop_loss_override: StopLossOverride | None = None,
         trailing_stop_collector: TrailingStopCollector | None = None,
         trade_manager: TradeManager | None = None,
+        exchange_timezone: str = "UTC",
+        session_exit_at: str | None = None,
     ) -> None:
         self._initial_capital = initial_capital
         self._portfolio = portfolio
@@ -66,6 +68,8 @@ class ExecutionContext:
         self.stop_loss_override = stop_loss_override
         self.trailing_stop_collector = trailing_stop_collector
         self._trade_manager = trade_manager
+        self.exchange_timezone = exchange_timezone
+        self.session_exit_at = session_exit_at
         self._current_bar: Bar | None = None
         self._current_bar_index = -1
 

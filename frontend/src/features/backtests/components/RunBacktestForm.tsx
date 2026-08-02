@@ -25,6 +25,7 @@ import {
   parseMaxBars,
   parseMaxTradesPerDay,
   parseEntryWindow,
+  parseSessionExit,
   parseStopLossOverride,
   parseNumericSettings,
   resolveExplainLevel,
@@ -134,6 +135,9 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
     const stopLossOverride = parseStopLossOverride(state)
     if (!stopLossOverride.ok) return setFieldError(stopLossOverride.error)
 
+    const sessionExit = parseSessionExit(state)
+    if (!sessionExit.ok) return setFieldError(sessionExit.error)
+
     setFieldError(null)
     await onSubmit(
       toExecuteInput(
@@ -144,6 +148,7 @@ export function RunBacktestForm({ state, onSubmit, isSubmitting }: RunBacktestFo
         maxTradesPerDay.value,
         entryWindow.value,
         stopLossOverride.value,
+        sessionExit.value,
       ),
     )
   }

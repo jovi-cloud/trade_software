@@ -45,6 +45,8 @@ class ExecutionConfig:
     entry_window_start: str | None = None
     entry_window_end: str | None = None
     stop_loss_override: StopLossOverride | None = None
+    #: Exchange-local ``HH:MM`` to flatten any open position when stop/target did not fire.
+    session_exit_at: str | None = None
 
     def __post_init__(self) -> None:
         if self.initial_capital <= 0:
@@ -61,6 +63,10 @@ class ExecutionConfig:
         if window is not None:
             object.__setattr__(self, "entry_window_start", window[0])
             object.__setattr__(self, "entry_window_end", window[1])
+        if self.session_exit_at is not None:
+            from app.engine.execution.entry_window import normalize_hhmm
+
+            object.__setattr__(self, "session_exit_at", normalize_hhmm(self.session_exit_at))
 
 
 class ExecutionEngine:
@@ -222,6 +228,8 @@ class ExecutionEngine:
             stop_loss_override=self.config.stop_loss_override,
             trailing_stop_collector=trailing_stop_collector,
             trade_manager=trade_manager,
+            exchange_timezone=self.config.session_timezone,
+            session_exit_at=self.config.session_exit_at,
         )
         loaded.bind_context(context)
 

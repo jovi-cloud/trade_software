@@ -923,6 +923,18 @@ export interface components {
              * @description Stop distance: percent (e.g. 2.0) or ATR multiple (e.g. 1.5).
              */
             stop_loss_value?: number | null;
+            /**
+             * Enable Session Exit
+             * @description Flatten any open position at session_exit_at exchange time when stop-loss and take-profit did not fire first.
+             * @default true
+             */
+            enable_session_exit: boolean;
+            /**
+             * Session Exit At
+             * @description Exchange-local HH:MM for the mandatory session flatten (default 14:55 IST).
+             * @default 14:55
+             */
+            session_exit_at: string;
         };
         /**
          * BacktestJobResultRead
